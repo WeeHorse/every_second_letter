@@ -43,7 +43,6 @@ let state = {
   game: null,
   pollTimer: null,
   previousGame: null,
-  completedWords: [],
 };
 
 function log(msg) {
@@ -55,7 +54,6 @@ function setCreds(gameId, playerToken) {
   state.gameId = gameId;
   state.playerToken = playerToken;
   state.previousGame = null;
-  state.completedWords = [];
 
   els.gameIdOut.textContent = gameId ?? "-";
   els.playerTokenOut.textContent = playerToken ?? "-";
@@ -90,39 +88,6 @@ async function api(path, options = {}) {
 
 function render(game) {
   if (!game) return;
-
-  // Track completed words
-  if (state.previousGame) {
-    // Detect word completion: transition FROM PendingDispute TO InProgress
-    // This means the dispute was just resolved, so points are now awarded
-    if (state.previousGame.status === "PendingDispute" && game.status === "InProgress") {
-      const completedWord = state.previousGame.pendingWord;
-      if (completedWord) {
-        // Figure out who scored by comparing scores
-        const p1DeltaScore = game.player1Score - state.previousGame.player1Score;
-        const p2DeltaScore = game.player2Score - state.previousGame.player2Score;
-
-        let scoringPlayer = null;
-        let pointsAwarded = 0;
-
-        if (p1DeltaScore > 0) {
-          scoringPlayer = "Player 1";
-          pointsAwarded = p1DeltaScore;
-        } else if (p2DeltaScore > 0) {
-          scoringPlayer = "Player 2";
-          pointsAwarded = p2DeltaScore;
-        }
-
-        // Only record if someone actually scored (not disputed)
-        if (pointsAwarded > 0) {
-          validateAndRecordWord(completedWord, scoringPlayer, pointsAwarded, state.gameId);
-        } else {
-          // Word was disputed and found invalid - still record but as disputed
-          recordDisputedWord(completedWord);
-        }
-      }
-    }
-  }
 
   state.previousGame = JSON.parse(JSON.stringify(game));
 
@@ -191,56 +156,19 @@ function render(game) {
   els.letterIn.disabled = !myTurn;
 
   if (myTurn) els.letterIn.focus();
-}
 
-async function validateAndRecordWord(word, player, points, gameId) {
-  try {
-    const result = await api(`/games/${gameId}/validate-word`, {
-      method: "POST",
-      body: JSON.stringify({ word })
-    });
-
-    console.log("Word validation result:", { word, valid: result.valid, result });
-
-    state.completedWords.push({
-      word: word,
-      player: player,
-      points: points,
-      valid: result.valid,
-    });
-  } catch (err) {
-    console.error("Word validation error:", err);
-    // If validation fails, still record the word but mark validity as unknown
-    state.completedWords.push({
-      word: word,
-      player: player,
-      points: points,
-      valid: null,
-    });
-  }
-
-  renderWordHistory();
-}
-
-function recordDisputedWord(word) {
-  state.completedWords.push({
-    word: word,
-    player: "Disputed",
-    points: 0,
-    valid: null,
-  });
   renderWordHistory();
 }
 
 function renderWordHistory() {
   els.wordHistory.innerHTML = "";
 
-  if (state.completedWords.length === 0) {
+  if (!state.game || !state.game.wordHistory || state.game.wordHistory.length === 0) {
     els.wordHistory.innerHTML = '<div class="word-history-empty">No completed words yet</div>';
     return;
   }
 
-  state.completedWords.forEach((entry, idx) => {
+  state.game.wordHistory.forEach((entry, idx) => {
     const item = document.createElement("div");
     item.className = "word-history-item";
 
@@ -251,8 +179,19 @@ function renderWordHistory() {
     const meta = document.createElement("span");
     meta.className = "word-history-meta";
 
-    if (entry.points > 0) {
-      meta.textContent = `${entry.player} +${entry.points}`;
+    // figure out who actually scored points
+    let scorer = "-";
+    let scoredPoints = 0;
+    if (entry.player1Points > entry.player2Points) {
+      scorer = "Player 1";
+      scoredPoints = entry.player1Points;
+    } else if (entry.player2Points > entry.player1Points) {
+      scorer = "Player 2";
+      scoredPoints = entry.player2Points;
+    }
+
+    if (scoredPoints > 0) {
+      meta.textContent = `${scorer} +${scoredPoints}`;
     } else {
       meta.textContent = "Disputed";
     }
@@ -260,10 +199,10 @@ function renderWordHistory() {
     const validity = document.createElement("span");
     validity.className = "word-history-validity";
 
-    if (entry.valid === true) {
+    if (entry.isValid === true) {
       validity.className += " valid";
       validity.textContent = "✓";
-    } else if (entry.valid === false) {
+    } else if (entry.isValid === false) {
       validity.className += " invalid";
       validity.textContent = "✗";
     } else {

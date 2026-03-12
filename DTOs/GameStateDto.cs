@@ -13,5 +13,6 @@ public sealed record GameStateDto(
     int Player1Score,
     int Player2Score,
     Guid? PendingClaimerId,
-    string? PendingWord
+    string? PendingWord,
+    List<WordHistoryEntry> WordHistory
 );

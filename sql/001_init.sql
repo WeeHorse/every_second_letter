@@ -29,4 +29,14 @@ create table if not exists contributions (
   primary key (game_id, player_id)
 );
 
+create table if not exists word_history (
+  game_id uuid not null references games(id) on delete cascade,
+  word text not null,
+  claimer_id uuid not null,
+  p1_points int not null default 0,
+  p2_points int not null default 0,
+  is_valid boolean not null,
+  created_at timestamptz not null
+);
+
 create index if not exists idx_games_updated_at on games(updated_at desc);

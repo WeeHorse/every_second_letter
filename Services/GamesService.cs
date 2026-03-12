@@ -15,7 +15,7 @@ public sealed class GamesService
     private readonly NpgsqlDataSource _ds;
     private readonly WordsService _words;
     private const int MinLength = 3;
-    
+
     private sealed record GameRow(
         Guid GameId,
         GameStatus Status,
@@ -140,7 +140,11 @@ public sealed class GamesService
         if (!await r.ReadAsync())
             throw new ApiException(404, "Game not found.");
 
-        return MapState(r);
+        var gameStateData = MapStateData(r);
+        await r.CloseAsync();
+
+        var wordHistory = await GetWordHistoryAsync(conn, gameId);
+        return MapState(gameStateData, wordHistory);
     }
 
     public async Task<GameStateDto> PlayLetterAsync(Guid gameId, Guid playerToken, string letter)
@@ -213,17 +217,17 @@ public sealed class GamesService
             EnsurePlayerInGame(g, playerToken);
             if (g.Status != GameStatus.InProgress)
                 throw new ApiException(409, "Game is not in progress.");
-            
+
             //if (g.ActivePlayerId != playerToken)
             //    throw new ApiException(409, "Not your turn.");
-            
+
             var canClaim =
                 g.ActivePlayerId == playerToken ||
                 (g.LastLetterPlayerId.HasValue && g.LastLetterPlayerId.Value == playerToken);
 
             if (!canClaim)
                 throw new ApiException(409, "You can only claim on your turn or immediately after placing the last letter.");
-            
+
             if (g.CurrentWord.Length < MinLength)
                 throw new ApiException(409, $"Word must be at least {MinLength} letters.");
 
@@ -283,7 +287,8 @@ public sealed class GamesService
             var basePoints = await GetContributionCount(conn, tx, gameId, claimer);
             var baseScore = basePoints * basePoints;
 
-            var wordValid = disputed ? _words.IsValid(g.PendingWord!) : true;
+            // always check actual word validity so we can mark history correctly
+            var wordValid = _words.IsValid(g.PendingWord!);
 
             int claimerDelta = 0;
             int opponentDelta = 0;
@@ -304,6 +309,24 @@ public sealed class GamesService
                 await AddScore(conn, tx, gameId, claimer, claimerDelta);
             if (opponentDelta != 0)
                 await AddScore(conn, tx, gameId, opponent, opponentDelta);
+
+            // Store word history with points breakdown
+            int p1Points = claimer == g.Player1Id ? claimerDelta : opponentDelta;
+            int p2Points = claimer == g.Player2Id ? claimerDelta : opponentDelta;
+
+            var history = conn.CreateCommand();
+            history.Transaction = tx;
+            history.CommandText = """
+                insert into word_history (game_id, word, claimer_id, p1_points, p2_points, is_valid, created_at)
+                values (@gid, @word, @claimer, @p1pts, @p2pts, @valid, now())
+            """;
+            history.Parameters.AddWithValue("gid", gameId);
+            history.Parameters.AddWithValue("word", g.PendingWord!);
+            history.Parameters.AddWithValue("claimer", claimer);
+            history.Parameters.AddWithValue("p1pts", p1Points);
+            history.Parameters.AddWithValue("p2pts", p2Points);
+            history.Parameters.AddWithValue("valid", wordValid);
+            await history.ExecuteNonQueryAsync();
 
             // reset word + contributions; turn goes to opponent of claimer (i.e. the resolver player)
             var reset = conn.CreateCommand();
@@ -427,32 +450,73 @@ public sealed class GamesService
         );
     }
 
-    private static GameStateDto MapState(NpgsqlDataReader r)
+    private async Task<List<WordHistoryEntry>> GetWordHistoryAsync(NpgsqlConnection conn, Guid gameId)
     {
-        var gameId = r.GetGuid(0);
-        var status = Enum.Parse<GameStatus>(r.GetString(1));
-        var currentWord = r.GetString(2);
-        var active = r.GetGuid(3);
-        var lastLetter = r.IsDBNull(4) ? (Guid?)null : r.GetGuid(4);
-        var p1 = r.GetGuid(5);
-        var p2 = r.IsDBNull(6) ? (Guid?)null : r.GetGuid(6);
-        var pendingClaimer = r.IsDBNull(7) ? (Guid?)null : r.GetGuid(7);
-        var pendingWord = r.IsDBNull(8) ? null : r.GetString(8);
-        var p1score = r.GetInt32(9);
-        var p2score = r.GetInt32(10);
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = "select word, claimer_id, p1_points, p2_points, is_valid from word_history where game_id=@gid order by created_at asc";
+        cmd.Parameters.AddWithValue("gid", gameId);
 
+        var history = new List<WordHistoryEntry>();
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            history.Add(new WordHistoryEntry(
+                r.GetString(0),
+                r.GetGuid(1),
+                r.GetInt32(2),
+                r.GetInt32(3),
+                r.GetBoolean(4)
+            ));
+        }
+        return history;
+    }
+
+    private sealed record GameStateData(
+        Guid GameId,
+        GameStatus Status,
+        string CurrentWord,
+        Guid ActivePlayerId,
+        Guid? LastLetterPlayerId,
+        Guid Player1Id,
+        Guid? Player2Id,
+        Guid? PendingClaimerId,
+        string? PendingWord,
+        int Player1Score,
+        int Player2Score
+    );
+
+    private static GameStateData MapStateData(NpgsqlDataReader r)
+    {
+        return new GameStateData(
+            r.GetGuid(0),
+            Enum.Parse<GameStatus>(r.GetString(1)),
+            r.GetString(2),
+            r.GetGuid(3),
+            r.IsDBNull(4) ? (Guid?)null : r.GetGuid(4),
+            r.GetGuid(5),
+            r.IsDBNull(6) ? (Guid?)null : r.GetGuid(6),
+            r.IsDBNull(7) ? (Guid?)null : r.GetGuid(7),
+            r.IsDBNull(8) ? null : r.GetString(8),
+            r.GetInt32(9),
+            r.GetInt32(10)
+        );
+    }
+
+    private static GameStateDto MapState(GameStateData data, List<WordHistoryEntry> wordHistory)
+    {
         return new GameStateDto(
-            gameId,
-            status,
-            currentWord,
-            active,
-            lastLetter,
-            p1,
-            p2,
-            p1score,
-            p2score,
-            pendingClaimer,
-            pendingWord
+            data.GameId,
+            data.Status,
+            data.CurrentWord,
+            data.ActivePlayerId,
+            data.LastLetterPlayerId,
+            data.Player1Id,
+            data.Player2Id,
+            data.Player1Score,
+            data.Player2Score,
+            data.PendingClaimerId,
+            data.PendingWord,
+            wordHistory
         );
     }
 }
