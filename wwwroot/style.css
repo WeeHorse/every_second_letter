@@ -311,12 +311,39 @@ hr {
   font-size: 14px;
   color: #111;
   letter-spacing: 1px;
+  flex: 1;
 }
 
 .word-history-meta {
   font-size: 12px;
   color: #667eea;
   font-weight: 600;
+}
+
+.word-history-validity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.word-history-validity.valid {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.word-history-validity.invalid {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.word-history-validity.unknown {
+  background: #f0f2f7;
+  color: #999;
 }
 
 @media (max-width: 768px) {

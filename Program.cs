@@ -108,6 +108,15 @@ app.MapPost("/games/{gameId:guid}/dispute", async (Guid gameId, HttpRequest http
     return Results.Ok(state);
 });
 
+app.MapPost("/games/{gameId:guid}/validate-word", (Guid gameId, ValidateWordRequest req, WordsService words) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Word))
+        throw new ApiException(400, "Word is required.");
+    
+    var isValid = words.IsValid(req.Word);
+    return Results.Ok(new { word = req.Word, valid = isValid });
+});
+
 app.Run();
 
 static Guid RequirePlayerToken(HttpRequest http)

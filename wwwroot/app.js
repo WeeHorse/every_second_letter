@@ -112,14 +112,8 @@ function render(game) {
           pointsAwarded = p2DeltaScore;
         }
 
-        // Record completed word
-        state.completedWords.push({
-          word: completedWord,
-          player: scoringPlayer || "Disputed",
-          points: pointsAwarded,
-        });
-
-        renderWordHistory();
+        // Validate the word asynchronously
+        validateAndRecordWord(completedWord, scoringPlayer || "Disputed", pointsAwarded, state.gameId);
       }
     }
   }
@@ -193,6 +187,32 @@ function render(game) {
   if (myTurn) els.letterIn.focus();
 }
 
+async function validateAndRecordWord(word, player, points, gameId) {
+  try {
+    const result = await api(`/games/${gameId}/validate-word`, {
+      method: "POST",
+      body: JSON.stringify({ word })
+    });
+    
+    state.completedWords.push({
+      word: word,
+      player: player,
+      points: points,
+      valid: result.valid,
+    });
+  } catch (err) {
+    // If validation fails, still record the word but mark validity as unknown
+    state.completedWords.push({
+      word: word,
+      player: player,
+      points: points,
+      valid: null,
+    });
+  }
+  
+  renderWordHistory();
+}
+
 function renderWordHistory() {
   els.wordHistory.innerHTML = "";
   
@@ -218,8 +238,23 @@ function renderWordHistory() {
       meta.textContent = "Disputed";
     }
     
+    const validity = document.createElement("span");
+    validity.className = "word-history-validity";
+    
+    if (entry.valid === true) {
+      validity.className += " valid";
+      validity.textContent = "✓";
+    } else if (entry.valid === false) {
+      validity.className += " invalid";
+      validity.textContent = "✗";
+    } else {
+      validity.className += " unknown";
+      validity.textContent = "?";
+    }
+    
     item.appendChild(word);
     item.appendChild(meta);
+    item.appendChild(validity);
     els.wordHistory.appendChild(item);
   });
 }
