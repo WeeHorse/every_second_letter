@@ -127,7 +127,7 @@ function render(game) {
   state.previousGame = JSON.parse(JSON.stringify(game));
 
   els.statusOut.textContent = game.status;
-  
+
   // Display "Player 1" or "Player 2" in the marquee
   let activePlayerDisplay = "-";
   if (game.activePlayerId === game.player1Id) {
@@ -136,10 +136,10 @@ function render(game) {
     activePlayerDisplay = "Player 2";
   }
   els.activeMarquee.textContent = activePlayerDisplay;
-  
+
   els.gameIdGameOut.textContent = state.gameId || "-";
   updateGameLink();
-  
+
   // Render word as letter tiles
   els.wordOut.innerHTML = "";
   if (game.currentWord && game.currentWord.length > 0) {
@@ -199,9 +199,9 @@ async function validateAndRecordWord(word, player, points, gameId) {
       method: "POST",
       body: JSON.stringify({ word })
     });
-    
+
     console.log("Word validation result:", { word, valid: result.valid, result });
-    
+
     state.completedWords.push({
       word: word,
       player: player,
@@ -218,7 +218,7 @@ async function validateAndRecordWord(word, player, points, gameId) {
       valid: null,
     });
   }
-  
+
   renderWordHistory();
 }
 
@@ -234,7 +234,7 @@ function recordDisputedWord(word) {
 
 function renderWordHistory() {
   els.wordHistory.innerHTML = "";
-  
+
   if (state.completedWords.length === 0) {
     els.wordHistory.innerHTML = '<div class="word-history-empty">No completed words yet</div>';
     return;
@@ -243,23 +243,23 @@ function renderWordHistory() {
   state.completedWords.forEach((entry, idx) => {
     const item = document.createElement("div");
     item.className = "word-history-item";
-    
+
     const word = document.createElement("span");
     word.className = "word-history-word";
     word.textContent = entry.word.toUpperCase();
-    
+
     const meta = document.createElement("span");
     meta.className = "word-history-meta";
-    
+
     if (entry.points > 0) {
       meta.textContent = `${entry.player} +${entry.points}`;
     } else {
       meta.textContent = "Disputed";
     }
-    
+
     const validity = document.createElement("span");
     validity.className = "word-history-validity";
-    
+
     if (entry.valid === true) {
       validity.className += " valid";
       validity.textContent = "✓";
@@ -270,7 +270,7 @@ function renderWordHistory() {
       validity.className += " unknown";
       validity.textContent = "?";
     }
-    
+
     item.appendChild(word);
     item.appendChild(meta);
     item.appendChild(validity);

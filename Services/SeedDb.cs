@@ -4,28 +4,28 @@ namespace EverySecondLetter.Services;
 
 public static class SeedDb
 {
-    public static async Task InitializeAsync(NpgsqlDataSource ds)
+  public static async Task InitializeAsync(NpgsqlDataSource ds)
+  {
+    await using var conn = await ds.OpenConnectionAsync();
+
+    // Check if tables exist
+    var tablesExist = await TablesExistAsync(conn);
+
+    if (!tablesExist)
     {
-        await using var conn = await ds.OpenConnectionAsync();
-
-        // Check if tables exist
-        var tablesExist = await TablesExistAsync(conn);
-
-        if (!tablesExist)
-        {
-            await CreateTablesAsync(conn);
-            Console.WriteLine("✓ Database tables created");
-        }
-        else
-        {
-            Console.WriteLine("✓ Database tables already exist");
-        }
+      await CreateTablesAsync(conn);
+      Console.WriteLine("✓ Database tables created");
     }
-
-    private static async Task<bool> TablesExistAsync(NpgsqlConnection conn)
+    else
     {
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
+      Console.WriteLine("✓ Database tables already exist");
+    }
+  }
+
+  private static async Task<bool> TablesExistAsync(NpgsqlConnection conn)
+  {
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
             select exists (
               select 1 from information_schema.tables 
               where table_schema = 'public' 
@@ -33,14 +33,14 @@ public static class SeedDb
             )
         """;
 
-        var result = await cmd.ExecuteScalarAsync();
-        return result is not null && (bool)result;
-    }
+    var result = await cmd.ExecuteScalarAsync();
+    return result is not null && (bool)result;
+  }
 
-    private static async Task CreateTablesAsync(NpgsqlConnection conn)
-    {
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
+  private static async Task CreateTablesAsync(NpgsqlConnection conn)
+  {
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
             create table if not exists games (
               id uuid primary key,
               status text not null,
@@ -72,6 +72,6 @@ public static class SeedDb
             create index if not exists idx_games_updated_at on games(updated_at desc);
         """;
 
-        await cmd.ExecuteNonQueryAsync();
-    }
+    await cmd.ExecuteNonQueryAsync();
+  }
 }

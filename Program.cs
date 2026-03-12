@@ -112,7 +112,7 @@ app.MapPost("/games/{gameId:guid}/validate-word", (Guid gameId, ValidateWordRequ
 {
     if (string.IsNullOrWhiteSpace(req.Word))
         throw new ApiException(400, "Word is required.");
-    
+
     var isValid = words.IsValid(req.Word);
     return Results.Ok(new { word = req.Word, valid = isValid });
 });
