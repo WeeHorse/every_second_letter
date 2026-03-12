@@ -194,6 +194,8 @@ async function validateAndRecordWord(word, player, points, gameId) {
       body: JSON.stringify({ word })
     });
     
+    console.log("Word validation result:", { word, valid: result.valid, result });
+    
     state.completedWords.push({
       word: word,
       player: player,
@@ -201,6 +203,7 @@ async function validateAndRecordWord(word, player, points, gameId) {
       valid: result.valid,
     });
   } catch (err) {
+    console.error("Word validation error:", err);
     // If validation fails, still record the word but mark validity as unknown
     state.completedWords.push({
       word: word,
