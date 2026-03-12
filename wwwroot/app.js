@@ -99,7 +99,19 @@ function render(game) {
   
   els.gameIdGameOut.textContent = state.gameId || "-";
   updateGameLink();
-  els.wordOut.textContent = game.currentWord || "(empty)";
+  
+  // Render word as letter tiles
+  els.wordOut.innerHTML = "";
+  if (game.currentWord && game.currentWord.length > 0) {
+    game.currentWord.split("").forEach(letter => {
+      const tile = document.createElement("span");
+      tile.className = "word-tile";
+      tile.textContent = letter;
+      els.wordOut.appendChild(tile);
+    });
+  } else {
+    els.wordOut.innerHTML = '<span class="word-tile empty">(empty)</span>';
+  }
 
   els.p1Out.textContent = game.player1Id;
   els.p2Out.textContent = game.player2Id ?? "(not joined)";
@@ -185,6 +197,8 @@ els.joinBtn.addEventListener("click", async () => {
   try {
     const res = await api(`/games/${gid}/join`, { method: "POST" });
     setCreds(res.gameId, res.playerToken);
+    // Clear and update localStorage with the new player's credentials
+    localStorage.setItem("esl_creds", JSON.stringify({ gameId: res.gameId, playerToken: res.playerToken }));
     log(`Joined game ${res.gameId}`);
   } catch (e) { log(e.message); }
 });

@@ -88,6 +88,36 @@ code {
   margin: 6px 0;
 }
 
+.word-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.word-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
+}
+
+.word-tile.empty {
+  width: auto;
+  padding: 0 12px;
+  background: #f0f2f7;
+  color: #999;
+  font-weight: normal;
+}
+
 pre {
   background: #0b1020;
   color: #e6ebff;
