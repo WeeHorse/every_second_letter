@@ -1,4 +1,4 @@
-// Generated from: e2e/features/smoke.feature
+// Generated from: e2e/ui/features/smoke.feature
 import { test } from "playwright-bdd";
 
 test.describe('Smoke', () => {
@@ -14,7 +14,7 @@ test.describe('Smoke', () => {
 
 test.use({
   $test: [({}, use) => use(test), { scope: 'test', box: true }],
-  $uri: [({}, use) => use('e2e/features/smoke.feature'), { scope: 'test', box: true }],
+  $uri: [({}, use) => use('e2e/ui/features/smoke.feature'), { scope: 'test', box: true }],
   $bddFileData: [({}, use) => use(bddFileData), { scope: "test", box: true }],
 });
 

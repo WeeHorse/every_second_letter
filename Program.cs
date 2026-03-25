@@ -32,6 +32,8 @@ var app = builder.Build();
 var ds = app.Services.GetRequiredService<NpgsqlDataSource>();
 await SeedDb.InitializeAsync(ds);
 
+app.UseDeveloperExceptionPage();
+
 // ---- Lightweight API error -> ProblemDetails ----
 app.Use(async (ctx, next) =>
 {
@@ -45,10 +47,6 @@ app.Use(async (ctx, next) =>
         await ctx.Response.WriteAsJsonAsync(new { error = ex.Message, status = ex.StatusCode });
     }
 });
-
-// if (app.Environment.IsDevelopment())
-app.UseDeveloperExceptionPage();
-// }
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -76,8 +74,15 @@ app.MapPost("/games/{gameId:guid}/join", async (Guid gameId, GamesService games)
 
 app.MapGet("/games/{gameId:guid}", async (Guid gameId, GamesService games) =>
 {
-    var state = await games.GetStateAsync(gameId);
-    return Results.Ok(state);
+    try
+    {
+        var state = await games.GetStateAsync(gameId);
+        return Results.Ok(state);
+    }
+    catch (EverySecondLetter.Services.ApiException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: ex.StatusCode);
+    }
 });
 
 app.MapPost("/games/{gameId:guid}/letter", async (Guid gameId, PlayLetterRequest req, HttpRequest http, GamesService games) =>

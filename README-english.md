@@ -152,6 +152,18 @@ opponentScore = floor(baseScore × 0.5)
 
 This punishes risky or fake claims.
 
+## Action Limits & Endgame
+
+Each player begins the match with **5 accepts** and **5 disputes**.  Whenever
+the opponent is asked to respond to a claim, using Accept or Dispute consumes one
+of the remaining actions.  The countdown is shown directly in the UI buttons.
+
+When **both players** have used up all ten actions the game automatically ends.
+The winner is the player with the higher score; ties are possible.  The status
+bar and standing display make the outcome obvious: the finished state is shown
+along with the winning side.
+
+
 
 
 ## After Resolution

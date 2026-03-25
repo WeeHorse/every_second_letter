@@ -7,7 +7,8 @@ public enum GameStatus
 {
     WaitingForPlayers,
     InProgress,
-    PendingDispute
+    PendingDispute,
+    Finished
 }
 
 public sealed class GamesService
@@ -23,6 +24,10 @@ public sealed class GamesService
         Guid ActivePlayerId,
         Guid Player1Id,
         Guid? Player2Id,
+        int Player1Accepts,
+        int Player1Disputes,
+        int Player2Accepts,
+        int Player2Disputes,
         Guid? PendingClaimerId,
         string? PendingWord,
         Guid? LastLetterPlayerId
@@ -46,8 +51,8 @@ public sealed class GamesService
             var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = """
-                insert into games (id, status, current_word, active_player_id, player1_id, player2_id, pending_claimer_id, pending_word, created_at, updated_at)
-                values (@id, @status, '', @active, @p1, null, null, null, now(), now());
+                insert into games (id, status, current_word, active_player_id, player1_id, player2_id, pending_claimer_id, pending_word, p1_accepts, p1_disputes, p2_accepts, p2_disputes, created_at, updated_at)
+                values (@id, @status, '', @active, @p1, null, null, null, 5, 5, 5, 5, now(), now());
                 insert into scores (game_id, player_id, score) values (@id, @p1, 0);
             """;
             cmd.Parameters.AddWithValue("id", gameId);
@@ -100,7 +105,7 @@ public sealed class GamesService
             update.Transaction = tx;
             update.CommandText = """
                 update games
-                set player2_id=@p2, status=@status, updated_at=now()
+                set player2_id=@p2, status=@status, p2_accepts=5, p2_disputes=5, updated_at=now()
                 where id=@id;
                 insert into scores (game_id, player_id, score) values (@id, @p2, 0);
             """;
@@ -126,7 +131,9 @@ public sealed class GamesService
 
         var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            select g.id, g.status, g.current_word, g.active_player_id, g.last_letter_player_id, g.player1_id, g.player2_id, g.pending_claimer_id, g.pending_word,
+            select g.id, g.status, g.current_word, g.active_player_id, g.last_letter_player_id, g.player1_id, g.player2_id,
+                   g.p1_accepts, g.p1_disputes, g.p2_accepts, g.p2_disputes,
+                   g.pending_claimer_id, g.pending_word,
                    coalesce(s1.score,0) as p1score,
                    coalesce(s2.score,0) as p2score
             from games g
@@ -222,11 +229,10 @@ public sealed class GamesService
             //    throw new ApiException(409, "Not your turn.");
 
             var canClaim =
-                g.ActivePlayerId == playerToken ||
-                (g.LastLetterPlayerId.HasValue && g.LastLetterPlayerId.Value == playerToken);
+                g.LastLetterPlayerId.HasValue && g.LastLetterPlayerId.Value == playerToken;
 
             if (!canClaim)
-                throw new ApiException(409, "You can only claim on your turn or immediately after placing the last letter.");
+                throw new ApiException(409, "You can only claim immediately after placing the last letter.");
 
             if (g.CurrentWord.Length < MinLength)
                 throw new ApiException(409, $"Word must be at least {MinLength} letters.");
@@ -328,24 +334,79 @@ public sealed class GamesService
             history.Parameters.AddWithValue("valid", wordValid);
             await history.ExecuteNonQueryAsync();
 
+            // decrement responder's action counter
+            // make sure opponent still has an action left
+            int avail;
+            if (opponent == g.Player1Id)
+                avail = disputed ? g.Player1Disputes : g.Player1Accepts;
+            else
+                avail = disputed ? g.Player2Disputes : g.Player2Accepts;
+            if (avail <= 0)
+                throw new ApiException(409, "No remaining accepts/disputes available.");
+
+            var counterCol = opponent == g.Player1Id
+                ? (disputed ? "p1_disputes" : "p1_accepts")
+                : (disputed ? "p2_disputes" : "p2_accepts");
+            var dec = conn.CreateCommand();
+            dec.Transaction = tx;
+            dec.CommandText = $"update games set {counterCol} = {counterCol} - 1 where id=@gid";
+            dec.Parameters.AddWithValue("gid", gameId);
+            await dec.ExecuteNonQueryAsync();
+
+            // determine if game should finish: both players have no actions left
+            var chk = conn.CreateCommand();
+            chk.Transaction = tx;
+            chk.CommandText = "select (p1_accepts+p1_disputes) as p1left, (p2_accepts+p2_disputes) as p2left from games where id=@gid";
+            chk.Parameters.AddWithValue("gid", gameId);
+            await using var rr = await chk.ExecuteReaderAsync();
+            int p1left = 0, p2left = 0;
+            if (await rr.ReadAsync())
+            {
+                p1left = rr.GetInt32(0);
+                p2left = rr.GetInt32(1);
+            }
+            await rr.CloseAsync();
+            var gameOver = p1left == 0 && p2left == 0;
+
+
             // reset word + contributions; turn goes to opponent of claimer (i.e. the resolver player)
             var reset = conn.CreateCommand();
             reset.Transaction = tx;
-            reset.CommandText = """
-                delete from contributions where game_id=@gid;
-                update games
-                set status=@st,
-                    current_word='',
-                    active_player_id=@next,
-                    pending_claimer_id=null,
-                    pending_word=null,
-                    last_letter_player_id = null,
-                    updated_at=now()
-                where id=@gid
-            """;
-            reset.Parameters.AddWithValue("gid", gameId);
-            reset.Parameters.AddWithValue("st", GameStatus.InProgress.ToString());
-            reset.Parameters.AddWithValue("next", opponent);
+
+            string nextStatus = gameOver ? GameStatus.Finished.ToString() : GameStatus.InProgress.ToString();
+
+            if (gameOver)
+            {
+                // only update status and timestamp when finished
+                reset.CommandText = """
+                    delete from contributions where game_id=@gid;
+                    update games
+                    set status=@st,
+                        updated_at=now()
+                    where id=@gid
+                """;
+                reset.Parameters.AddWithValue("gid", gameId);
+                reset.Parameters.AddWithValue("st", nextStatus);
+            }
+            else
+            {
+                reset.CommandText = """
+                    delete from contributions where game_id=@gid;
+                    update games
+                    set status=@st,
+                        current_word='',
+                        active_player_id=@next,
+                        pending_claimer_id=null,
+                        pending_word=null,
+                        last_letter_player_id = null,
+                        updated_at=now()
+                    where id=@gid
+                """;
+                reset.Parameters.AddWithValue("gid", gameId);
+                reset.Parameters.AddWithValue("st", nextStatus);
+                reset.Parameters.AddWithValue("next", opponent);
+            }
+
             await reset.ExecuteNonQueryAsync();
 
             await tx.CommitAsync();
@@ -426,7 +487,9 @@ public sealed class GamesService
         var cmd = conn.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = """
-            select id, status, current_word, active_player_id, player1_id, player2_id, pending_claimer_id, pending_word, last_letter_player_id
+            select id, status, current_word, active_player_id, player1_id, player2_id,
+                   p1_accepts, p1_disputes, p2_accepts, p2_disputes,
+                   pending_claimer_id, pending_word, last_letter_player_id
             from games
             where id=@id
             for update
@@ -444,9 +507,13 @@ public sealed class GamesService
             r.GetGuid(3),
             r.GetGuid(4),
             r.IsDBNull(5) ? (Guid?)null : r.GetGuid(5),
-            r.IsDBNull(6) ? (Guid?)null : r.GetGuid(6),
-            r.IsDBNull(7) ? null : r.GetString(7),
-            r.IsDBNull(8) ? (Guid?)null : r.GetGuid(8)
+            r.GetInt32(6),
+            r.GetInt32(7),
+            r.GetInt32(8),
+            r.GetInt32(9),
+            r.IsDBNull(10) ? (Guid?)null : r.GetGuid(10),
+            r.IsDBNull(11) ? null : r.GetString(11),
+            r.IsDBNull(12) ? (Guid?)null : r.GetGuid(12)
         );
     }
 
@@ -479,6 +546,10 @@ public sealed class GamesService
         Guid? LastLetterPlayerId,
         Guid Player1Id,
         Guid? Player2Id,
+        int Player1Accepts,
+        int Player1Disputes,
+        int Player2Accepts,
+        int Player2Disputes,
         Guid? PendingClaimerId,
         string? PendingWord,
         int Player1Score,
@@ -495,10 +566,14 @@ public sealed class GamesService
             r.IsDBNull(4) ? (Guid?)null : r.GetGuid(4),
             r.GetGuid(5),
             r.IsDBNull(6) ? (Guid?)null : r.GetGuid(6),
-            r.IsDBNull(7) ? (Guid?)null : r.GetGuid(7),
-            r.IsDBNull(8) ? null : r.GetString(8),
+            r.GetInt32(7),
+            r.GetInt32(8),
             r.GetInt32(9),
-            r.GetInt32(10)
+            r.GetInt32(10),
+            r.IsDBNull(11) ? (Guid?)null : r.GetGuid(11),
+            r.IsDBNull(12) ? null : r.GetString(12),
+            r.GetInt32(13),
+            r.GetInt32(14)
         );
     }
 
@@ -514,6 +589,10 @@ public sealed class GamesService
             data.Player2Id,
             data.Player1Score,
             data.Player2Score,
+            data.Player1Accepts,
+            data.Player1Disputes,
+            data.Player2Accepts,
+            data.Player2Disputes,
             data.PendingClaimerId,
             data.PendingWord,
             wordHistory

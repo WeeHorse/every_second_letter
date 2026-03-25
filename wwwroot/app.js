@@ -27,6 +27,8 @@ const els = {
   acceptBtn: document.getElementById("acceptBtn"),
   disputeBtn: document.getElementById("disputeBtn"),
   leaveBtn: document.getElementById("leaveBtn"),
+  youOut: document.getElementById("youOut"),
+  standingOut: document.getElementById("standingOut"),
 
   rulesBtn: document.getElementById("rulesBtn"),
   rulesPanel: document.getElementById("rulesPanel"),
@@ -91,7 +93,15 @@ function render(game) {
 
   state.previousGame = JSON.parse(JSON.stringify(game));
 
-  els.statusOut.textContent = game.status;
+  // status display with winner when finished
+  if (game.status === "Finished") {
+    let winner = "Tie";
+    if (game.player1Score > game.player2Score) winner = "Player 1";
+    else if (game.player2Score > game.player1Score) winner = "Player 2";
+    els.statusOut.textContent = `Finished (${winner} wins)`;
+  } else {
+    els.statusOut.textContent = game.status;
+  }
 
   // Display "Player 1" or "Player 2" in the marquee
   let activePlayerDisplay = "-";
@@ -101,6 +111,19 @@ function render(game) {
     activePlayerDisplay = "Player 2";
   }
   els.activeMarquee.textContent = activePlayerDisplay;
+
+  // show which player you are
+  let you = "-";
+  if (state.playerToken === game.player1Id) you = "Player 1";
+  else if (state.playerToken === game.player2Id) you = "Player 2";
+  els.youOut.textContent = you;
+
+  // standings text
+  let standing = "";
+  if (game.player1Score > game.player2Score) standing = `P1 +${game.player1Score - game.player2Score}`;
+  else if (game.player2Score > game.player1Score) standing = `P2 +${game.player2Score - game.player1Score}`;
+  else standing = "even";
+  els.standingOut.textContent = standing;
 
   els.gameIdGameOut.textContent = state.gameId || "-";
   updateGameLink();
@@ -134,6 +157,19 @@ function render(game) {
     state.playerToken &&
     state.playerToken !== game.pendingClaimerId;
 
+  // update accept/dispute button labels with remaining counts
+  if (game.player1Id && game.player2Id) {
+    // determine opponent counts for current user if responding
+    const isP1 = state.playerToken === game.player1Id;
+    const acceptsLeft = isP1 ? game.player1Accepts : game.player2Accepts;
+    const disputesLeft = isP1 ? game.player1Disputes : game.player2Disputes;
+    els.acceptBtn.textContent = `Accept (${acceptsLeft})`;
+    els.disputeBtn.textContent = `Dispute (${disputesLeft})`;
+    // disable if none left
+    els.acceptBtn.disabled = acceptsLeft <= 0;
+    els.disputeBtn.disabled = disputesLeft <= 0;
+  }
+
   els.disputeRow.classList.toggle("hidden", !canRespond);
 
   const myTurn = state.playerToken &&
@@ -145,19 +181,25 @@ function render(game) {
     game.status === "InProgress" &&
     game.lastLetterPlayerId === state.playerToken;
 
+  const meetsMinLength =
+    game.currentWord &&
+    game.currentWord.length >= 3;
+
   els.playBtn.disabled = !myTurn;
   els.letterIn.disabled = !myTurn;
 
-  // Claim är tillåtet om:
-  // 1) det är din tur
-  // 2) eller du var den som la senaste bokstaven
-  els.claimBtn.disabled = !(myTurn || canClaimAfterLast);
-  els.playBtn.disabled = !myTurn;
-  els.letterIn.disabled = !myTurn;
+  // Claim är tillåtet endast om du var den som la senaste bokstaven och ordet nått minlängd
+  els.claimBtn.disabled = !(canClaimAfterLast && meetsMinLength) || game.status === "Finished";
+  // play/letter already disabled above
 
-  if (myTurn) els.letterIn.focus();
+  if (myTurn && game.status !== "Finished") els.letterIn.focus();
 
   renderWordHistory();
+
+  // if game over, stop polling to freeze state
+  if (game.status === "Finished" && state.pollTimer) {
+    stopPolling();
+  }
 }
 
 function renderWordHistory() {

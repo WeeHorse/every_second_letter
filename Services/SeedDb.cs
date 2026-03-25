@@ -19,6 +19,8 @@ public static class SeedDb
     else
     {
       Console.WriteLine("✓ Database tables already exist");
+      // make sure new columns/tables introduced later are created
+      await EnsureSchemaAsync(conn);
     }
   }
 
@@ -29,12 +31,36 @@ public static class SeedDb
             select exists (
               select 1 from information_schema.tables 
               where table_schema = 'public' 
-              and table_name = 'word_history'
+              and table_name = 'games'
             )
         """;
 
     var result = await cmd.ExecuteScalarAsync();
     return result is not null && (bool)result;
+  }
+
+  private static async Task EnsureSchemaAsync(NpgsqlConnection conn)
+  {
+    // add any columns or tables that might have been introduced since creation
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
+            alter table games
+              add column if not exists p1_accepts int not null default 5,
+              add column if not exists p1_disputes int not null default 5,
+              add column if not exists p2_accepts int not null default 5,
+              add column if not exists p2_disputes int not null default 5;
+
+            create table if not exists word_history (
+              game_id uuid not null references games(id) on delete cascade,
+              word text not null,
+              claimer_id uuid not null,
+              p1_points int not null default 0,
+              p2_points int not null default 0,
+              is_valid boolean not null,
+              created_at timestamptz not null
+            );
+        """;
+    await cmd.ExecuteNonQueryAsync();
   }
 
   private static async Task CreateTablesAsync(NpgsqlConnection conn)
@@ -78,6 +104,13 @@ public static class SeedDb
               is_valid boolean not null,
               created_at timestamptz not null
             );
+
+            -- accept/dispute counters
+            alter table games
+              add column if not exists p1_accepts int not null default 5,
+              add column if not exists p1_disputes int not null default 5,
+              add column if not exists p2_accepts int not null default 5,
+              add column if not exists p2_disputes int not null default 5;
 
             create index if not exists idx_games_updated_at on games(updated_at desc);
         """;

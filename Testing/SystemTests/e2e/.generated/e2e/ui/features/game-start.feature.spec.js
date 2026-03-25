@@ -1,4 +1,4 @@
-// Generated from: e2e/features/game-start.feature
+// Generated from: e2e/ui/features/game-start.feature
 import { test } from "playwright-bdd";
 
 test.describe('Starta ett spel', () => {
@@ -15,7 +15,7 @@ test.describe('Starta ett spel', () => {
 
 test.use({
   $test: [({}, use) => use(test), { scope: 'test', box: true }],
-  $uri: [({}, use) => use('e2e/features/game-start.feature'), { scope: 'test', box: true }],
+  $uri: [({}, use) => use('e2e/ui/features/game-start.feature'), { scope: 'test', box: true }],
   $bddFileData: [({}, use) => use(bddFileData), { scope: "test", box: true }],
 });
 

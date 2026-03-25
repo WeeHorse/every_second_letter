@@ -39,4 +39,11 @@ create table if not exists word_history (
   created_at timestamptz not null
 );
 
+-- track remaining accepts/disputes for each player (starts at 5 each)
+alter table games
+  add column if not exists p1_accepts int not null default 5,
+  add column if not exists p1_disputes int not null default 5,
+  add column if not exists p2_accepts int not null default 5,
+  add column if not exists p2_disputes int not null default 5;
+
 create index if not exists idx_games_updated_at on games(updated_at desc);

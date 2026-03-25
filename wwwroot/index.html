@@ -1,117 +1,119 @@
 <!doctype html>
 <html lang="en">
 
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>EverySecondLetter</title>
-    <link rel="stylesheet" href="/style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  </head>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EverySecondLetter</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
 
-  <body>
-    <main>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-        <h1 style="margin: 0;">EverySecondLetter</h1>
-        <button id="rulesBtn" style="padding: 8px 16px;">Rules</button>
+<body>
+  <main>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <h1 style="margin: 0;">EverySecondLetter</h1>
+      <button id="rulesBtn" style="padding: 8px 16px;">Rules</button>
+    </div>
+
+    <section class="card" id="setup">
+      <h2>Setup</h2>
+      <div class="row">
+        <button id="createBtn">Create game</button>
+        <span class="hint">Open a second tab to join as Player 2.</span>
       </div>
 
-      <section class="card" id="setup">
-        <h2>Setup</h2>
-        <div class="row">
-          <button id="createBtn">Create game</button>
-          <span class="hint">Open a second tab to join as Player 2.</span>
-        </div>
+      <div class="row">
+        <input id="joinGameId" placeholder="Game ID to join" />
+        <button id="joinBtn">Join game</button>
+      </div>
 
-        <div class="row">
-          <input id="joinGameId" placeholder="Game ID to join" />
-          <button id="joinBtn">Join game</button>
-        </div>
+      <div class="row">
+        <label>Game ID</label>
+        <code id="gameIdOut">-</code>
+      </div>
+      <div class="row">
+        <label>Player token</label>
+        <code id="playerTokenOut">-</code>
+      </div>
+    </section>
 
-        <div class="row">
-          <label>Game ID</label>
-          <code id="gameIdOut">-</code>
-        </div>
-        <div class="row">
-          <label>Player token</label>
-          <code id="playerTokenOut">-</code>
-        </div>
-      </section>
+    <section class="card hidden" id="game">
+      <h2>Game</h2>
 
-      <section class="card hidden" id="game">
-        <h2>Game</h2>
+      <div class="row">
+        <label>Game ID (share to join)</label>
+        <code id="gameIdGameOut">-</code>
+        <button id="copyGameIdBtn">Copy</button>
+      </div>
 
-        <div class="row">
-          <label>Game ID (share to join)</label>
-          <code id="gameIdGameOut">-</code>
-          <button id="copyGameIdBtn">Copy</button>
-        </div>
+      <div class="row">
+        <label>Game Link</label>
+        <code id="gameLinkOut">-</code>
+        <button id="copyGameLinkBtn">Copy</button>
+      </div>
 
-        <div class="row">
-          <label>Game Link</label>
-          <code id="gameLinkOut">-</code>
-          <button id="copyGameLinkBtn">Copy</button>
-        </div>
+      <hr />
 
-        <hr />
-
-        <div class="grid2">
-          <div>
-            <div class="kv"><span>Status</span><code id="statusOut">-</code></div>
-            <div class="kv"><span>Active player</span></div>
-            <div class="marquee-container">
-              <div class="marquee" id="activeMarquee">-</div>
-            </div>
-            <div class="kv"><span>Current word</span></div>
-            <div id="wordOut" class="word-tiles"></div>
-            <div class="kv"><span>Pending</span><code id="pendingOut">-</code></div>
-          </div>
-          <div>
-            <div class="kv"><span>Player 1</span><code id="p1Out">-</code></div>
-            <div class="kv"><span>Player 1 score</span><code id="p1ScoreOut">-</code></div>
-            <div class="kv"><span>Player 2</span><code id="p2Out">-</code></div>
-            <div class="kv"><span>Player 2 score</span><code id="p2ScoreOut">-</code></div>
-          </div>
-        </div>
-
-        <hr />
-
-        <div class="row">
-          <input id="letterIn" maxlength="1" placeholder="Letter" />
-          <button id="playBtn">Play letter</button>
-          <button id="claimBtn">Claim word</button>
-        </div>
-
-        <div class="row hidden" id="disputeRow">
-          <button id="acceptBtn">Accept</button>
-          <button id="disputeBtn" class="danger">Dispute</button>
-          <span class="hint">Only the opponent can accept/dispute.</span>
-        </div>
-
-        <div class="row">
-          <button id="leaveBtn" class="danger">Leave game</button>
-        </div>
-
-        <hr />
-
+      <div class="grid2">
         <div>
-          <h3>Word Progress</h3>
-          <div id="wordHistory" class="word-history"></div>
+          <div class="kv"><span>Status</span><code id="statusOut">-</code></div>
+          <div class="kv"><span>Active player</span></div>
+          <div class="marquee-container">
+            <div class="marquee" id="activeMarquee">-</div>
+          </div>
+          <div class="kv"><span>Current word</span></div>
+          <div id="wordOut" class="word-tiles"></div>
+          <div class="kv"><span>Pending</span><code id="pendingOut">-</code></div>
         </div>
-
-        <pre id="log"></pre>
-      </section>
-
-      <div id="rulesPanel" class="rules-panel hidden">
-        <div class="rules-header">
-          <h2>Gameplay & Rules</h2>
-          <button id="closeRulesBtn" class="close-btn">✕</button>
+        <div>
+          <div class="kv"><span>Player 1</span><code id="p1Out">-</code></div>
+          <div class="kv"><span>Player 1 score</span><code id="p1ScoreOut">-</code></div>
+          <div class="kv"><span>Player 2</span><code id="p2Out">-</code></div>
+          <div class="kv"><span>Player 2 score</span><code id="p2ScoreOut">-</code></div>
+          <div class="kv"><span>You are</span><code id="youOut">-</code></div>
+          <div class="kv"><span>Standing</span><code id="standingOut">-</code></div>
         </div>
-        <div id="rulesContent" class="rules-content"></div>
       </div>
-    </main>
 
-    <script src="/app.js"></script>
-  </body>
+      <hr />
+
+      <div class="row">
+        <input id="letterIn" maxlength="1" placeholder="Letter" />
+        <button id="playBtn">Play letter</button>
+        <button id="claimBtn">Claim word</button>
+      </div>
+
+      <div class="row hidden" id="disputeRow">
+        <button id="acceptBtn">Accept</button>
+        <button id="disputeBtn" class="danger">Dispute</button>
+        <span class="hint">Only the opponent can accept/dispute.</span>
+      </div>
+
+      <div class="row">
+        <button id="leaveBtn" class="danger">Leave game</button>
+      </div>
+
+      <hr />
+
+      <div>
+        <h3>Word Progress</h3>
+        <div id="wordHistory" class="word-history"></div>
+      </div>
+
+      <pre id="log"></pre>
+    </section>
+
+    <div id="rulesPanel" class="rules-panel hidden">
+      <div class="rules-header">
+        <h2>Gameplay & Rules</h2>
+        <button id="closeRulesBtn" class="close-btn">✕</button>
+      </div>
+      <div id="rulesContent" class="rules-content"></div>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
 
 </html>

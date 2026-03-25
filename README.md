@@ -120,6 +120,16 @@ Exempel:
 * Spelare A lade H, L, O → 3 bokstäver
 * Poäng = 3² = 9 poäng
 
+### Åtgärdsbegränsningar och slutspel
+
+Varje spelare börjar med **5 acceptera** och **5 bestrida**-poäng. När spelaren
+frågas om accept eller dispute tas ett av dessa poäng i anspråk och räknaren
+uppdateras i knapparna i gränssnittet.
+
+Spelet slutar helt automatiskt när **båda spelarna** har använt alla tio åtgärder.
+Den spelare som då har högst poäng vinner; oavgjort är möjligt. Gränssnittet
+visar tydligt status och vinnare i slutet.
+
 ### Om motspelaren bestrider (Dispute)
 
 Ordet kontrolleras mot ordlistan.

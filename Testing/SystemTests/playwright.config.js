@@ -3,8 +3,8 @@ import { defineConfig } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
 const testDir = defineBddConfig({
-  features: ['e2e/features/**/*.feature'],
-  steps: ['e2e/steps/**/*.js'],      // i ESM-konfig heter det ofta "steps"
+  features: ['e2e/api/features/**/*.feature', 'e2e/ui/features/**/*.feature'],
+  steps: ['e2e/api/steps/**/*.js', 'e2e/ui/steps/**/*.js'],
   outputDir: 'e2e/.generated',
 });
 
