@@ -322,11 +322,13 @@ els.joinBtn.addEventListener("click", async () => {
   const gid = els.joinGameId.value.trim();
   if (!gid) return log("Enter a game id to join.");
   try {
+    const priorToken = state.playerToken;
     const res = await api(`/games/${gid}/join`, { method: "POST" });
     setCreds(res.gameId, res.playerToken);
     // Clear and update localStorage with the new player's credentials
     localStorage.setItem("esl_creds", JSON.stringify({ gameId: res.gameId, playerToken: res.playerToken }));
-    log(`Joined game ${res.gameId}`);
+    const isRejoin = !!priorToken && priorToken === res.playerToken;
+    log(isRejoin ? `Rejoined game ${res.gameId}` : `Joined game ${res.gameId}`);
   } catch (e) { log(e.message); }
 });
 
@@ -447,12 +449,16 @@ els.rulesPanel.addEventListener("click", (e) => {
   setDebugVisible(savedDebugVisible);
 
   const saved = JSON.parse(localStorage.getItem("esl_creds") || "null");
-  if (saved?.gameId && saved?.playerToken) setCreds(saved.gameId, saved.playerToken);
+  const hasRestoredCreds = saved?.gameId && saved?.playerToken;
+
+  if (hasRestoredCreds) setCreds(saved.gameId, saved.playerToken);
 
   // Check for join parameter in URL
+  // Only auto-join if credentials were NOT already restored from localStorage
+  // (prevents attempting to join a game we're already part of)
   const urlParams = new URLSearchParams(window.location.search);
   const joinGameId = urlParams.get("join");
-  if (joinGameId) {
+  if (joinGameId && !hasRestoredCreds) {
     // Auto-join the game
     els.joinGameId.value = joinGameId;
     setTimeout(() => els.joinBtn.click(), 100);

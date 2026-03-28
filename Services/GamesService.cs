@@ -84,7 +84,7 @@ public sealed class GamesService
         return new CreateGameResponse(gameId, playerId);
     }
 
-    public async Task<JoinGameResponse> JoinGameAsync(Guid gameId)
+    public async Task<JoinGameResponse> JoinGameAsync(Guid gameId, Guid? existingPlayerToken = null)
     {
         var playerId = Guid.NewGuid();
 
@@ -95,6 +95,13 @@ public sealed class GamesService
         {
             var game = await ReadGameForUpdateAsync(conn, tx, gameId);
             var players = await ReadPlayersForUpdateAsync(conn, tx, gameId);
+
+            if (existingPlayerToken.HasValue && players.Any(player => player.PlayerId == existingPlayerToken.Value))
+            {
+                await tx.CommitAsync();
+                return new JoinGameResponse(gameId, existingPlayerToken.Value);
+            }
+
             if (!_definition.CanJoin(game.Status, players.Count))
                 throw new ApiException(409, "Game is not joinable.");
 

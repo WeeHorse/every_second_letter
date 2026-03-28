@@ -67,9 +67,10 @@ app.MapPost("/games", async (GamesService games) =>
     return Results.Created($"/games/{result.GameId}", result);
 });
 
-app.MapPost("/games/{gameId:guid}/join", async (Guid gameId, GamesService games) =>
+app.MapPost("/games/{gameId:guid}/join", async (Guid gameId, HttpRequest http, GamesService games) =>
 {
-    var result = await games.JoinGameAsync(gameId);
+    var playerToken = TryGetPlayerToken(http);
+    var result = await games.JoinGameAsync(gameId, playerToken);
     return Results.Ok(result);
 });
 
@@ -132,4 +133,11 @@ static Guid RequirePlayerToken(HttpRequest http)
     if (!Guid.TryParse(values.FirstOrDefault(), out var token))
         throw new ApiException(401, "Invalid X-Player-Token header.");
     return token;
+}
+
+static Guid? TryGetPlayerToken(HttpRequest http)
+{
+    if (!http.Headers.TryGetValue("X-Player-Token", out var values))
+        return null;
+    return Guid.TryParse(values.FirstOrDefault(), out var token) ? token : null;
 }
