@@ -5,7 +5,7 @@ Turordningsbaserat ordspel för två spelare, byggt med .NET 8 Minimal API, Post
 ## Vad Repon Innehaller
 
 - Backend-API i C# (.NET 8) med SQL-lagring.
-- React-frontend i frontend/, byggs till Server/wwwroot/ for produktion.
+- React-frontend i Frontend/, byggs till Server/wwwroot/ for produktion.
 - Spelregler for bokstavsspel, claim/dispute-poang och automatiskt slutspel.
 - Systemtester med Postman/Newman (API) och Playwright + playwright-bdd (UI).
 
@@ -32,7 +32,7 @@ Turordningsbaserat ordspel för två spelare, byggt med .NET 8 Minimal API, Post
 │   ├── Gameplay/
 │   ├── wordlists/
 │   └── wwwroot/
-├── frontend/
+├── Frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
@@ -105,7 +105,7 @@ Anvand configfil:
 Terminal 1:
 
 ```bash
-cd frontend
+cd Frontend
 npm install
 npm run dev
 ```
@@ -121,7 +121,7 @@ Oppna http://localhost:5173. Vite proxar /games till http://localhost:5010.
 ### Lokal produktionstest
 
 ```bash
-cd frontend
+cd Frontend
 npm install
 npm run build
 cd ..
@@ -149,7 +149,7 @@ Oppna http://localhost:5010.
 
 ## Spelregler
 
-Se den kanoniska regelbeskrivningen i [frontend/public/gameplay-and-rules.md](frontend/public/gameplay-and-rules.md).
+Se den kanoniska regelbeskrivningen i [Frontend/public/gameplay-and-rules.md](Frontend/public/gameplay-and-rules.md).
 
 ## API Oversikt
 
@@ -208,7 +208,7 @@ Noteringar:
 - Problem med frontend-beroenden:
 
 ```bash
-cd frontend
+cd Frontend
 rm -rf node_modules package-lock.json
 npm install
 ```

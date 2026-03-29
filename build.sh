@@ -2,7 +2,7 @@
 
 # Build React frontend
 echo "Building React frontend..."
-cd frontend
+cd Frontend
 npm install
 npm run build
 cd ..

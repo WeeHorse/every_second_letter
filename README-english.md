@@ -5,7 +5,7 @@ Two-player word game built with .NET 8 Minimal API, PostgreSQL, and a React + Vi
 ## What This Repo Contains
 
 - Backend API in C# (.NET 8) with SQL persistence.
-- React frontend in frontend/, built into Server/wwwroot/ for production serving.
+- React frontend in Frontend/, built into Server/wwwroot/ for production serving.
 - Gameplay logic for turn-based letter play, claim/dispute scoring, and automatic endgame.
 - System tests using Postman/Newman (API) and Playwright + playwright-bdd (UI).
 
@@ -32,7 +32,7 @@ Two-player word game built with .NET 8 Minimal API, PostgreSQL, and a React + Vi
 │   ├── Gameplay/
 │   ├── wordlists/
 │   └── wwwroot/
-├── frontend/
+├── Frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
@@ -105,7 +105,7 @@ Use config file:
 Terminal 1:
 
 ```bash
-cd frontend
+cd Frontend
 npm install
 npm run dev
 ```
@@ -121,7 +121,7 @@ Open http://localhost:5173. Vite proxies /games calls to http://localhost:5010.
 ### Production-like Local Run
 
 ```bash
-cd frontend
+cd Frontend
 npm install
 npm run build
 cd ..
@@ -149,7 +149,7 @@ Open http://localhost:5010.
 
 ## Gameplay Rules
 
-See the canonical rules document at [frontend/public/gameplay-and-rules.md](frontend/public/gameplay-and-rules.md).
+See the canonical rules document at [Frontend/public/gameplay-and-rules.md](Frontend/public/gameplay-and-rules.md).
 
 ## API Overview
 
@@ -208,7 +208,7 @@ Notes:
 - Frontend dependency issues:
 
 ```bash
-cd frontend
+cd Frontend
 rm -rf node_modules package-lock.json
 npm install
 ```
