@@ -22,6 +22,9 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddSingleton(new NpgsqlDataSourceBuilder(connStr).Build());
 builder.Services.AddSingleton<WordsService>();
 builder.Services.AddSingleton<EverySecondLetterGameDefinition>();
@@ -34,6 +37,8 @@ var ds = app.Services.GetRequiredService<NpgsqlDataSource>();
 await SeedDb.InitializeAsync(ds);
 
 app.UseDeveloperExceptionPage();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // ---- Lightweight API error -> ProblemDetails ----
 app.Use(async (ctx, next) =>

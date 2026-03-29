@@ -1,0 +1,631 @@
+{
+  "info": {
+    "_postman_id": "7c45b18b-cf90-4a8c-925b-c0fd62269f26",
+    "name": "EverySecondLetter API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API regression flow migrated from Playwright API tests."
+  },
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('health returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('health payload has status ok', function () {",
+              "  pm.expect(body.status).to.eql('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create game",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('create game returns 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('gameId', body.gameId);",
+              "pm.collectionVariables.set('p1Token', body.playerToken);",
+              "pm.test('create payload includes ids', function () {",
+              "  pm.expect(body.gameId).to.be.a('string');",
+              "  pm.expect(body.playerToken).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Join game as player 2",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/join",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "join"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('join returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('p2Token', body.playerToken);",
+              "pm.test('join returns player token', function () {",
+              "  pm.expect(body.playerToken).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get game state after join",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('state fetch returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('state is in progress with 2 players', function () {",
+              "  pm.expect(body.status).to.eql('InProgress');",
+              "  pm.expect(body.players.length).to.eql(2);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject out-of-turn play",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"letter\": \"x\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('out-of-turn letter is rejected with 409', function () {",
+              "  pm.response.to.have.status(409);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 plays T",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"letter\": \"t\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 plays E",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"letter\": \"e\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 plays S",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"letter\": \"s\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 claims word",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/claim",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "claim"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('claim returns pending dispute', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql('PendingDispute');",
+              "  pm.expect(body.pendingWord).to.eql('TES');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Claimer cannot accept own claim",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/accept",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "accept"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(409);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 accepts claim",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/accept",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "accept"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('accept resolves claim and resets word', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql('InProgress');",
+              "  pm.expect(body.currentWord).to.eql('');",
+              "  pm.expect(body.pendingWord).to.eql(null);",
+              "  pm.expect(body.player2Accepts).to.eql(4);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rejoin returns same player token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/join",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "join"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('rejoin returns same token', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.playerToken).to.eql(pm.collectionVariables.get('p2Token'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Third player cannot join in-progress game",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/join",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "join"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(409);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validate word CAT",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"word\": \"CAT\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/validate-word",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "validate-word"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('validate-word accepts CAT as valid', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.word).to.eql('CAT');",
+              "  pm.expect(body.valid).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validate clearly invalid word",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"word\": \"ZZZZZZQ\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/validate-word",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "validate-word"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('validate-word rejects invalid word', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.word).to.eql('ZZZZZZQ');",
+              "  pm.expect(body.valid).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "gameId",
+      "value": ""
+    },
+    {
+      "key": "p1Token",
+      "value": ""
+    },
+    {
+      "key": "p2Token",
+      "value": ""
+    }
+  ]
+}

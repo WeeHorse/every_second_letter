@@ -7,13 +7,13 @@ Turordningsbaserat ordspel för två spelare, byggt med .NET 8 Minimal API, Post
 - Backend-API i C# (.NET 8) med SQL-lagring.
 - React-frontend i frontend/, byggs till wwwroot/ for produktion.
 - Spelregler for bokstavsspel, claim/dispute-poang och automatiskt slutspel.
-- Systemtester (API + UI BDD) med Playwright + playwright-bdd.
+- Systemtester med Postman/Newman (API) och Playwright + playwright-bdd (UI).
 
 ## Teknikstack
 
 - Backend: .NET 8 Minimal API, Npgsql, PostgreSQL
 - Frontend: React 18, Vite, React Context
-- Test: Playwright, playwright-bdd
+- Test: Postman/Newman (API), Playwright + playwright-bdd (UI)
 
 ## Krav
 
@@ -115,6 +115,7 @@ Se den kanoniska regelbeskrivningen i [frontend/public/gameplay-and-rules.md](fr
 
 ## API Oversikt
 
+- Swagger UI: http://localhost:5010/swagger
 - GET /health
 - GET /client-ip
 - POST /games
@@ -151,7 +152,8 @@ npm run test:headed
 
 Noteringar:
 
-- test och projektspecifika korningar genererar om BDD-specar med bddgen.
+- API-tester kor via Newman med Postman-kollektionen i Testing/SystemTests/postman/.
+- Endast UI-tester genererar BDD-specar med bddgen.
 - UI-testerna anvander baseURL http://localhost:5010.
 
 ## Felsokning

@@ -1,12 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 
-const apiTestDir = defineBddConfig({
-  features: 'e2e/api/features/**/*.feature',
-  steps: 'e2e/api/steps/**/*.js',
-  outputDir: '.features-gen/api'
-});
-
 const uiTestDir = defineBddConfig({
   features: 'e2e/ui/features/**/*.feature',
   steps: ['e2e/ui/steps/**/*.js', 'e2e/ui/pages/**/*.js'],
@@ -26,13 +20,6 @@ export default defineConfig({
     video: 'retain-on-failure'
   },
   projects: [
-    {
-      name: 'api',
-      testDir: apiTestDir,
-      use: {
-        ...devices['Desktop Chrome']
-      }
-    },
     {
       name: 'ui',
       testDir: uiTestDir,

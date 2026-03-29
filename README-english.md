@@ -7,13 +7,13 @@ Two-player word game built with .NET 8 Minimal API, PostgreSQL, and a React + Vi
 - Backend API in C# (.NET 8) with SQL persistence.
 - React frontend in frontend/, built into wwwroot/ for production serving.
 - Gameplay logic for turn-based letter play, claim/dispute scoring, and automatic endgame.
-- System tests (API + UI BDD) using Playwright + playwright-bdd.
+- System tests using Postman/Newman (API) and Playwright + playwright-bdd (UI).
 
 ## Tech Stack
 
 - Backend: .NET 8 Minimal API, Npgsql, PostgreSQL
 - Frontend: React 18, Vite, React Context
-- Testing: Playwright, playwright-bdd
+- Testing: Postman/Newman (API), Playwright + playwright-bdd (UI)
 
 ## Requirements
 
@@ -115,6 +115,7 @@ See the canonical rules document at [frontend/public/gameplay-and-rules.md](fron
 
 ## API Overview
 
+- Swagger UI: http://localhost:5010/swagger
 - GET /health
 - GET /client-ip
 - POST /games
@@ -151,7 +152,8 @@ npm run test:headed
 
 Notes:
 
-- test and project runs regenerate BDD specs with bddgen.
+- API tests run with Newman using the Postman collection in Testing/SystemTests/postman/.
+- Only UI test runs regenerate BDD specs with bddgen.
 - UI tests target baseURL http://localhost:5010.
 
 ## Troubleshooting
