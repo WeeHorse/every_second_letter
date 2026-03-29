@@ -53,9 +53,22 @@ public sealed class GamesService
 
         await ExecuteInTransactionAsync(async (conn, tx) =>
         {
-            var gameCmd = conn.CreateCommand();
-            gameCmd.Transaction = tx;
-            gameCmd.CommandText = $"""
+            await InsertGameRowAsync(conn, tx, gameId, playerId);
+
+            await InsertPlayerAsync(conn, tx, gameId, playerId, normalizedPlayerName, turnOrder: 0);
+        });
+
+        return new CreateGameResponse(gameId, playerId);
+    }
+
+    private async Task InsertGameRowAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId)
+    {
+        // Preferred schema: games table without legacy player1/player2 and p1/p2 columns.
+        try
+        {
+            var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = $"""
                 insert into games (
                     id, status, current_word, active_player_id,
                     pending_claimer_id, pending_word,
@@ -65,15 +78,40 @@ public sealed class GamesService
                     null, null,
                     {_dialect.NowExpression}, {_dialect.NowExpression}, null);
             """;
-            AddParam(gameCmd, "id", gameId);
-            AddParam(gameCmd, "status", GameStatus.WaitingForPlayers.ToString());
-            AddParam(gameCmd, "active", playerId);
-            await gameCmd.ExecuteNonQueryAsync();
+            AddParam(cmd, "id", gameId);
+            AddParam(cmd, "status", GameStatus.WaitingForPlayers.ToString());
+            AddParam(cmd, "active", playerId);
+            await cmd.ExecuteNonQueryAsync();
+            return;
+        }
+        catch (DbException)
+        {
+            // Fall back for pre-refactor local databases that still require legacy columns.
+        }
 
-            await InsertPlayerAsync(conn, tx, gameId, playerId, normalizedPlayerName, turnOrder: 0);
-        });
-
-        return new CreateGameResponse(gameId, playerId);
+        var legacy = conn.CreateCommand();
+        legacy.Transaction = tx;
+        legacy.CommandText = $"""
+            insert into games (
+                id, status, current_word, active_player_id,
+                player1_id, player2_id,
+                pending_claimer_id, pending_word,
+                p1_accepts, p1_disputes, p2_accepts, p2_disputes,
+                created_at, updated_at, last_letter_player_id)
+            values (
+                @id, @status, '', @active,
+                @p1, null,
+                null, null,
+                @accepts, @disputes, @accepts, @disputes,
+                {_dialect.NowExpression}, {_dialect.NowExpression}, null);
+        """;
+        AddParam(legacy, "id", gameId);
+        AddParam(legacy, "status", GameStatus.WaitingForPlayers.ToString());
+        AddParam(legacy, "active", playerId);
+        AddParam(legacy, "p1", playerId);
+        AddParam(legacy, "accepts", _rules.InitialAccepts);
+        AddParam(legacy, "disputes", _rules.InitialDisputes);
+        await legacy.ExecuteNonQueryAsync();
     }
 
     public async Task<JoinGameResponse> JoinGameAsync(Guid gameId, string? playerName, Guid? existingPlayerToken = null)
