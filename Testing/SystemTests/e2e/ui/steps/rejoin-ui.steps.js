@@ -34,8 +34,8 @@ Given('ett spel där både spelarna är aktiva', async ({ page, browser }) => {
   state.beforeRefreshP1Score = await state.gameP2.getPlayer1Score();
   state.beforeRefreshP2Score = await state.gameP2.getPlayer2Score();
 
-  state.p2SavedPlayer = await page2.evaluate(() => window.localStorage.getItem('esl_player'));
-  state.p2SavedGame = await page2.evaluate(() => window.localStorage.getItem('esl_game'));
+  state.p2SavedPlayer = await page2.evaluate(() => window.sessionStorage.getItem('esl_player') ?? window.localStorage.getItem('esl_player'));
+  state.p2SavedGame = await page2.evaluate(() => window.sessionStorage.getItem('esl_game') ?? window.localStorage.getItem('esl_game'));
 });
 
 When('spelare 2 uppdaterar sidan \\(browser refresh\\)', async () => {
@@ -69,15 +69,21 @@ Given('ett spel med två aktiva spelare', async ({ page, browser }) => {
   await state.gameP1.waitForStatus('InProgress');
   await state.gameP2.waitForStatus('InProgress');
 
-  state.p2SavedPlayer = await page2.evaluate(() => window.localStorage.getItem('esl_player'));
-  state.p2SavedGame = await page2.evaluate(() => window.localStorage.getItem('esl_game'));
+  state.p2SavedPlayer = await page2.evaluate(() => window.sessionStorage.getItem('esl_player') ?? window.localStorage.getItem('esl_player'));
+  state.p2SavedGame = await page2.evaluate(() => window.sessionStorage.getItem('esl_game') ?? window.localStorage.getItem('esl_game'));
 });
 
 When('spelare 2 öppnar appen i nytt fönster med sparade credentials', async ({ browser }) => {
   const context3 = await browser.newContext();
   await context3.addInitScript(({ savedPlayer, savedGame }) => {
-    if (savedPlayer) window.localStorage.setItem('esl_player', savedPlayer);
-    if (savedGame) window.localStorage.setItem('esl_game', savedGame);
+    if (savedPlayer) {
+      window.sessionStorage.setItem('esl_player', savedPlayer);
+      window.localStorage.setItem('esl_player', savedPlayer);
+    }
+    if (savedGame) {
+      window.sessionStorage.setItem('esl_game', savedGame);
+      window.localStorage.setItem('esl_game', savedGame);
+    }
   }, {
     savedPlayer: state.p2SavedPlayer,
     savedGame: state.p2SavedGame,

@@ -113,6 +113,12 @@ export default class GamePage {
         return letters.join('');
     }
 
+    async waitForWordTiles(expectedWord, timeoutMs = 5000) {
+        await expect
+            .poll(async () => this.getWordTiles(), { timeout: timeoutMs })
+            .toBe(expectedWord);
+    }
+
     async getPendingWordText() {
         const text = await this.page.getByTestId('pending-word').textContent();
         return (text || '').trim();

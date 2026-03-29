@@ -16,7 +16,7 @@ const state = {
 
 async function getStoredToken(page) {
   return page.evaluate(() => {
-    const raw = window.localStorage.getItem('esl_player');
+    const raw = window.sessionStorage.getItem('esl_player') ?? window.localStorage.getItem('esl_player');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed?.token || null;
@@ -67,8 +67,7 @@ When('spelare 1 spelar bokstäver C A T \\(3 bokstäver\\)', async () => {
 });
 
 Then('visar gränssnittet ordet CAT med bokstäver som tiles', async () => {
-  const word = await state.gameP1.getWordTiles();
-  expect(word).toBe('CAT');
+  await state.gameP1.waitForWordTiles('CAT');
   const tiles = await state.gameP1.page.getByTestId('word-tile').count();
   expect(tiles).toBe(3);
 });
@@ -126,7 +125,8 @@ Then('spelet visar rätt poängställning efter varje round', async () => {
 });
 
 When('båda spelarna förbrukar alla accepts', async ({ request, baseURL }) => {
-  for (let i = 0; i < 12; i++) {
+  const maxRounds = 30;
+  for (let i = 0; i < maxRounds; i++) {
     const current = await getState(request, baseURL, state.gameId);
     if (current.status === 'Finished') {
       state.latestApiState = current;
@@ -147,10 +147,16 @@ When('båda spelarna förbrukar alla accepts', async ({ request, baseURL }) => {
     const claimRes = await postNoBody(request, `${baseURL}/games/${state.gameId}/claim`, claimerToken);
     expect(claimRes.status()).toBe(200);
 
-    const acceptRes = await postNoBody(request, `${baseURL}/games/${state.gameId}/accept`, responderToken);
-    expect(acceptRes.status()).toBe(200);
-    state.latestApiState = await acceptRes.json();
+    const responder = current.players?.find((p) => p.playerId === responderToken);
+    const responderAccepts = responder?.acceptsRemaining ?? 0;
+    const endpoint = responderAccepts > 0 ? 'accept' : 'dispute';
+
+    const responseRes = await postNoBody(request, `${baseURL}/games/${state.gameId}/${endpoint}`, responderToken);
+    expect(responseRes.status()).toBe(200);
+    state.latestApiState = await responseRes.json();
   }
+
+  throw new Error('Game did not reach Finished within the allotted rounds');
 });
 
 Then('visar gränssnittet status Finished', async () => {
@@ -294,8 +300,7 @@ When('spelare 1 lägger H', async () => {
 });
 
 Then('visar gränssnittet bokstaven H som en tile', async () => {
-  const word = await state.gameP1.getWordTiles();
-  expect(word).toContain('H');
+  await state.gameP1.waitForWordTiles('H');
 });
 
 When('spelare 2 lägger E', async () => {
@@ -303,8 +308,7 @@ When('spelare 2 lägger E', async () => {
 });
 
 Then('visar gränssnittet bokstäver H och E som tiles', async () => {
-  const word = await state.gameP1.getWordTiles();
-  expect(word).toBe('HE');
+  await state.gameP1.waitForWordTiles('HE');
 });
 
 Then('visar scoreboard {string} och {string} för spelare {int}', async ({}, expectedP1, expectedP2, playerNumber) => {
