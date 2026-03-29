@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,100..900;1,100..900&family=Smooch+Sans:wght@100..900&family=Style+Script&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -5,8 +7,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Libre Franklin', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -33,6 +34,8 @@ h1 {
   margin-bottom: 24px;
   color: #333;
   text-align: center;
+  font-family: 'Style Script', fantasy;
+  font-size: 300%;
 }
 
 h2 {

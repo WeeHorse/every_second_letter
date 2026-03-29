@@ -90,8 +90,8 @@ export default function GamePage() {
     <div className="game-header">
       <h1>EverySecondLetter</h1>
       <div className="game-header-actions">
-        <button onClick={() => setIsRulesOpen(true)} className="rules-btn">Gameplay & Rules</button>
-        <button onClick={logout} className="logout-btn">Leave</button>
+        <button onClick={() => setIsRulesOpen(true)} className="rules-btn">Rules</button>
+        <button onClick={logout} className="logout-btn">Quit</button>
       </div>
     </div>
   );

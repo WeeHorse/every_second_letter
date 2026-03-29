@@ -85,7 +85,7 @@ function CreateOrJoinPage() {
         <div className="create-join-header">
           <h1>EverySecondLetter</h1>
           <button className="rules-entry-btn" onClick={() => setIsRulesOpen(true)}>
-            Gameplay & Rules
+            Rules
           </button>
         </div>
         {!showJoin ? (
@@ -124,7 +124,7 @@ function CreateOrJoinPage() {
       >
         <aside className={`rules-panel ${isRulesOpen ? '' : 'hidden'}`} role="dialog" aria-modal="true" aria-label="Gameplay and rules">
           <div className="rules-header">
-            <h2>Gameplay & Rules</h2>
+            <h2>Rules</h2>
             <button onClick={() => setIsRulesOpen(false)} className="close-btn" aria-label="Close rules panel">×</button>
           </div>
           <div className="rules-content">

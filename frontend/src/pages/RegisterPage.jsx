@@ -78,7 +78,7 @@ export default function RegisterPage() {
         <div className="register-header">
           <h1>EverySecondLetter</h1>
           <button className="rules-entry-btn" onClick={() => setIsRulesOpen(true)}>
-            Gameplay & Rules
+            Rules
           </button>
         </div>
         <h2>Register Player</h2>

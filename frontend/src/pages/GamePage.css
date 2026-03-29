@@ -11,8 +11,9 @@
 
 .game-header-actions {
   display: flex;
-  align-items: center;
+  align-items: end;
   gap: 10px;
+  margin-left: 10px;
 }
 
 .rules-btn {
