@@ -1,0 +1,30 @@
+.word-display h3 {
+  margin: 0 0 12px 0;
+  color: #555;
+}
+
+.word-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.word-tile {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.word-tile.empty {
+  background: #f0f0f0;
+  color: #999;
+  font-size: 12px;
+  font-weight: normal;
+}

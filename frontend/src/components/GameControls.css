@@ -1,0 +1,36 @@
+.game-controls {
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.letter-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.letter-input-group input {
+  flex: 1;
+  font-size: 18px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.letter-input-group button {
+  flex: 0 0 60px;
+  padding: 10px;
+}
+
+.game-over {
+  text-align: center;
+  padding: 20px;
+  background: #e8f5e9;
+  border-radius: 6px;
+}
+
+.game-over h2 {
+  margin: 0 0 12px 0;
+  color: #388e3c;
+}

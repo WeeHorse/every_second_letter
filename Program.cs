@@ -48,8 +48,24 @@ app.Use(async (ctx, next) =>
         await ctx.Response.WriteAsJsonAsync(new { error = ex.Message, status = ex.StatusCode });
     }
 });
+
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// ---- SPA Fallback: For React routing, rewrite non-file requests to index.html ----
+app.Use(async (ctx, next) =>
+{
+    var path = ctx.Request.Path.Value ?? "/";
+    var ext = Path.GetExtension(path);
+    
+    // Skip API routes, routes with file extensions
+    if (!path.StartsWith("/games") && string.IsNullOrEmpty(ext) && path != "/" && path != "/index.html")
+    {
+        ctx.Request.Path = "/index.html";
+    }
+    
+    await next();
+});
 
 // ---- Routes (outer imperative layer) ----
 
