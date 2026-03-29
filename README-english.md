@@ -115,6 +115,8 @@ See the canonical rules document at [frontend/public/gameplay-and-rules.md](fron
 
 ## API Overview
 
+- GET /health
+- GET /client-ip
 - POST /games
 - POST /games/{id}/join
 - GET /games/{id}
@@ -122,8 +124,12 @@ See the canonical rules document at [frontend/public/gameplay-and-rules.md](fron
 - POST /games/{id}/claim
 - POST /games/{id}/accept
 - POST /games/{id}/dispute
+- POST /games/{id}/validate-word
 
-Authenticated player actions use X-Player-Token.
+X-Player-Token requirements:
+
+- Required for: /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
+- Optional for: /games/{id}/join (used for rejoin behavior)
 
 ## Testing
 

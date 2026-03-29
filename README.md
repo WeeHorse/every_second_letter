@@ -115,6 +115,8 @@ Se den kanoniska regelbeskrivningen i [frontend/public/gameplay-and-rules.md](fr
 
 ## API Oversikt
 
+- GET /health
+- GET /client-ip
 - POST /games
 - POST /games/{id}/join
 - GET /games/{id}
@@ -122,8 +124,12 @@ Se den kanoniska regelbeskrivningen i [frontend/public/gameplay-and-rules.md](fr
 - POST /games/{id}/claim
 - POST /games/{id}/accept
 - POST /games/{id}/dispute
+- POST /games/{id}/validate-word
 
-Skyddade spelarhandlingar anvander X-Player-Token.
+X-Player-Token krav:
+
+- Kravs for: /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
+- Valfritt for: /games/{id}/join (anvands for rejoin-beteende)
 
 ## Testning
 
