@@ -12,6 +12,7 @@ public sealed class GamesService
     private readonly WordsService _words;
     private readonly WordGameRules _rules;
     private readonly JoinGameEngine _joinGame;
+    private readonly StartGameEngine _startGame;
     private readonly PlayLetterEngine _playLetter;
     private readonly ClaimResolutionEngine _claimResolution;
 
@@ -22,27 +23,24 @@ public sealed class GamesService
         Guid? ActivePlayerId,
         Guid? PendingClaimerId,
         string? PendingWord,
-        Guid? LastLetterPlayerId,
-        Guid LegacyPlayer1Id,
-        Guid? LegacyPlayer2Id
+        Guid? LastLetterPlayerId
     );
 
     private sealed record HistoryRow(
         string Word,
         Guid ClaimerId,
         bool IsValid,
-        int LegacyPlayer1Points,
-        int LegacyPlayer2Points,
         string PointsJson
     );
 
-    public GamesService(IDbConnectionFactory connections, ISqlDialect dialect, WordsService words, WordGameRules rules, JoinGameEngine joinGame, PlayLetterEngine playLetter, ClaimResolutionEngine claimResolution)
+    public GamesService(IDbConnectionFactory connections, ISqlDialect dialect, WordsService words, WordGameRules rules, JoinGameEngine joinGame, StartGameEngine startGame, PlayLetterEngine playLetter, ClaimResolutionEngine claimResolution)
     {
         _connections = connections;
         _dialect = dialect;
         _words = words;
         _rules = rules;
         _joinGame = joinGame;
+        _startGame = startGame;
         _playLetter = playLetter;
         _claimResolution = claimResolution;
     }
@@ -59,26 +57,20 @@ public sealed class GamesService
             gameCmd.Transaction = tx;
             gameCmd.CommandText = $"""
                 insert into games (
-                    id, status, current_word, active_player_id, player1_id, player2_id,
+                    id, status, current_word, active_player_id,
                     pending_claimer_id, pending_word,
-                    p1_accepts, p1_disputes, p2_accepts, p2_disputes,
                     created_at, updated_at, last_letter_player_id)
                 values (
-                    @id, @status, '', @active, @p1, null,
+                    @id, @status, '', @active,
                     null, null,
-                    @accepts, @disputes, @accepts, @disputes,
                     {_dialect.NowExpression}, {_dialect.NowExpression}, null);
             """;
             AddParam(gameCmd, "id", gameId);
             AddParam(gameCmd, "status", GameStatus.WaitingForPlayers.ToString());
             AddParam(gameCmd, "active", playerId);
-            AddParam(gameCmd, "p1", playerId);
-            AddParam(gameCmd, "accepts", _rules.InitialAccepts);
-            AddParam(gameCmd, "disputes", _rules.InitialDisputes);
             await gameCmd.ExecuteNonQueryAsync();
 
             await InsertPlayerAsync(conn, tx, gameId, playerId, normalizedPlayerName, turnOrder: 0);
-            await InsertLegacyScoreAsync(conn, tx, gameId, playerId);
         });
 
         return new CreateGameResponse(gameId, playerId);
@@ -102,36 +94,36 @@ public sealed class GamesService
             }
 
             await InsertPlayerAsync(conn, tx, gameId, playerId, normalizedPlayerName, plan.TurnOrder ?? players.Count);
-            await InsertLegacyScoreAsync(conn, tx, gameId, playerId);
-
-            var update = conn.CreateCommand();
-            update.Transaction = tx;
-            update.CommandText = plan.ShouldStart
-                ? $"""
-                    update games
-                    set status=@status,
-                        active_player_id=@active,
-                        player2_id=coalesce(player2_id, @joinedPlayer),
-                        updated_at={_dialect.NowExpression}
-                    where id=@id
-                """
-                : $"""
-                    update games
-                    set player2_id=coalesce(player2_id, @joinedPlayer),
-                        updated_at={_dialect.NowExpression}
-                    where id=@id
-                """;
-            AddParam(update, "id", gameId);
-            AddParam(update, "joinedPlayer", playerId);
-            if (plan.ShouldStart)
-            {
-                AddParam(update, "status", GameStatus.InProgress.ToString());
-                AddParam(update, "active", plan.ActivePlayerId);
-            }
-            await update.ExecuteNonQueryAsync();
+            await UpdateGameAfterJoinAsync(conn, tx, gameId, plan.ShouldStart, plan.ActivePlayerId);
 
             return new JoinGameResponse(gameId, playerId);
         });
+    }
+
+    public async Task<GameStateDto> StartGameAsync(Guid gameId, Guid playerToken)
+    {
+        await ExecuteInTransactionAsync(async (conn, tx) =>
+        {
+            var game = await ReadGameForUpdateAsync(conn, tx, gameId);
+            var players = await ReadPlayersForUpdateAsync(conn, tx, gameId);
+            var plan = _startGame.CreatePlan(game.Status, players, playerToken);
+
+            var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = $"""
+                update games
+                set status=@status,
+                    active_player_id=@active,
+                    updated_at={_dialect.NowExpression}
+                where id=@id
+            """;
+            AddParam(cmd, "id", gameId);
+            AddParam(cmd, "status", GameStatus.InProgress.ToString());
+            AddParam(cmd, "active", plan.ActivePlayerId);
+            await cmd.ExecuteNonQueryAsync();
+        });
+
+        return await GetStateAsync(gameId);
     }
 
     public async Task<GameStateDto> GetStateAsync(Guid gameId)
@@ -140,7 +132,7 @@ public sealed class GamesService
 
         var game = await ReadGameAsync(conn, gameId);
         var players = await ReadPlayersAsync(conn, gameId);
-        var wordHistory = await ReadWordHistoryAsync(conn, gameId, players);
+        var wordHistory = await ReadWordHistoryAsync(conn, gameId);
 
         return new GameStateDto(
             game.GameId,
@@ -265,11 +257,10 @@ public sealed class GamesService
             foreach (var points in plan.PointEntries.Where(x => x.Points != 0))
             {
                 await AddScoreAsync(conn, tx, gameId, points.PlayerId, points.Points);
-                await AddLegacyScoreAsync(conn, tx, gameId, points.PlayerId, points.Points);
             }
 
-            await ConsumeResponseAsync(conn, tx, gameId, plan.ResponderId, disputed, players);
-            await InsertWordHistoryAsync(conn, tx, game, plan.PointEntries, isValidWord, players);
+            await ConsumeResponseAsync(conn, tx, gameId, plan.ResponderId, disputed);
+            await InsertWordHistoryAsync(conn, tx, game, plan.PointEntries, isValidWord);
 
             var reset = conn.CreateCommand();
             reset.Transaction = tx;
@@ -320,6 +311,41 @@ public sealed class GamesService
         return player;
     }
 
+    private async Task UpdateGameAfterJoinAsync(
+        DbConnection conn,
+        DbTransaction tx,
+        Guid gameId,
+        bool shouldStart,
+        Guid? activePlayerId)
+    {
+        var sets = new List<string>();
+
+        if (shouldStart)
+        {
+            sets.Add("status=@status");
+            sets.Add("active_player_id=@active");
+        }
+
+        sets.Add($"updated_at={_dialect.NowExpression}");
+
+        var update = conn.CreateCommand();
+        update.Transaction = tx;
+        update.CommandText = $"""
+            update games
+            set {string.Join(",\n                ", sets)}
+            where id=@id
+        """;
+        AddParam(update, "id", gameId);
+
+        if (shouldStart)
+        {
+            AddParam(update, "status", GameStatus.InProgress.ToString());
+            AddParam(update, "active", activePlayerId);
+        }
+
+        await update.ExecuteNonQueryAsync();
+    }
+
     private async Task InsertPlayerAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId, string playerName, int turnOrder)
     {
         var cmd = conn.CreateCommand();
@@ -337,26 +363,12 @@ public sealed class GamesService
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private static async Task InsertLegacyScoreAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId)
-    {
-        var cmd = conn.CreateCommand();
-        cmd.Transaction = tx;
-        cmd.CommandText = """
-            insert into scores (game_id, player_id, score)
-            values (@gid, @pid, 0)
-            on conflict (game_id, player_id) do nothing
-        """;
-        AddParam(cmd, "gid", gameId);
-        AddParam(cmd, "pid", playerId);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
     private async Task<GameRow> ReadGameAsync(DbConnection conn, Guid gameId)
     {
         var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            select id, status, current_word, active_player_id, pending_claimer_id,
-                   pending_word, last_letter_player_id, player1_id, player2_id
+             select id, status, current_word, active_player_id, pending_claimer_id,
+                 pending_word, last_letter_player_id
             from games
             where id=@id
         """;
@@ -375,7 +387,7 @@ public sealed class GamesService
         cmd.Transaction = tx;
         cmd.CommandText = $"""
             select id, status, current_word, active_player_id, pending_claimer_id,
-                   pending_word, last_letter_player_id, player1_id, player2_id
+                 pending_word, last_letter_player_id
             from games
             where id=@id
             {_dialect.ForUpdateClause}
@@ -402,9 +414,7 @@ public sealed class GamesService
             ReadNullableGuid(reader, 3),
             ReadNullableGuid(reader, 4),
             reader.IsDBNull(5) ? null : reader.GetString(5),
-            ReadNullableGuid(reader, 6),
-            ReadGuid(reader, 7),
-            ReadNullableGuid(reader, 8)
+            ReadNullableGuid(reader, 6)
         );
     }
 
@@ -486,22 +496,7 @@ public sealed class GamesService
             throw new ApiException(500, "Player score row missing.");
     }
 
-    private static async Task AddLegacyScoreAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId, int delta)
-    {
-        var cmd = conn.CreateCommand();
-        cmd.Transaction = tx;
-        cmd.CommandText = """
-            update scores
-            set score = score + @delta
-            where game_id=@gid and player_id=@pid
-        """;
-        AddParam(cmd, "delta", delta);
-        AddParam(cmd, "gid", gameId);
-        AddParam(cmd, "pid", playerId);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    private async Task ConsumeResponseAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId, bool disputed, IReadOnlyList<GamePlayerState> players)
+    private static async Task ConsumeResponseAsync(DbConnection conn, DbTransaction tx, Guid gameId, Guid playerId, bool disputed)
     {
         var cmd = conn.CreateCommand();
         cmd.Transaction = tx;
@@ -511,22 +506,6 @@ public sealed class GamesService
         AddParam(cmd, "gid", gameId);
         AddParam(cmd, "pid", playerId);
         await cmd.ExecuteNonQueryAsync();
-
-        var index = players.ToList().FindIndex(player => player.PlayerId == playerId);
-        if (index is 0 or 1)
-        {
-            var legacy = conn.CreateCommand();
-            legacy.Transaction = tx;
-            legacy.CommandText = index == 0
-                ? (disputed
-                    ? $"update games set p1_disputes = {_dialect.ClampToZero("p1_disputes - 1")} where id=@gid"
-                    : $"update games set p1_accepts = {_dialect.ClampToZero("p1_accepts - 1")} where id=@gid")
-                : (disputed
-                    ? $"update games set p2_disputes = {_dialect.ClampToZero("p2_disputes - 1")} where id=@gid"
-                    : $"update games set p2_accepts = {_dialect.ClampToZero("p2_accepts - 1")} where id=@gid");
-            AddParam(legacy, "gid", gameId);
-            await legacy.ExecuteNonQueryAsync();
-        }
     }
 
     private async Task InsertWordHistoryAsync(
@@ -534,36 +513,28 @@ public sealed class GamesService
         DbTransaction tx,
         GameRow game,
         List<PlayerPoints> pointEntries,
-        bool isValidWord,
-        IReadOnlyList<GamePlayerState> players)
+        bool isValidWord)
     {
-        var player1Id = players.Count > 0 ? players[0].PlayerId : (Guid?)null;
-        var player2Id = players.Count > 1 ? players[1].PlayerId : (Guid?)null;
-        var player1Points = player1Id is null ? 0 : pointEntries.Where(x => x.PlayerId == player1Id.Value).Sum(x => x.Points);
-        var player2Points = player2Id is null ? 0 : pointEntries.Where(x => x.PlayerId == player2Id.Value).Sum(x => x.Points);
-
         var cmd = conn.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = $"""
-            insert into word_history (id, game_id, word, claimer_id, p1_points, p2_points, is_valid, created_at, points_json)
-            values (@id, @gid, @word, @claimer, @p1, @p2, @valid, {_dialect.NowExpression}, {_dialect.JsonParameter("@points")})
+            insert into word_history (id, game_id, word, claimer_id, is_valid, created_at, points_json)
+            values (@id, @gid, @word, @claimer, @valid, {_dialect.NowExpression}, {_dialect.JsonParameter("@points")})
         """;
         AddParam(cmd, "id", Guid.NewGuid());
         AddParam(cmd, "gid", game.GameId);
         AddParam(cmd, "word", game.PendingWord ?? string.Empty);
         AddParam(cmd, "claimer", game.PendingClaimerId ?? Guid.Empty);
-        AddParam(cmd, "p1", player1Points);
-        AddParam(cmd, "p2", player2Points);
         AddParam(cmd, "valid", isValidWord);
         AddParam(cmd, "points", JsonSerializer.Serialize(pointEntries));
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private async Task<List<WordHistoryEntry>> ReadWordHistoryAsync(DbConnection conn, Guid gameId, IReadOnlyList<GamePlayerState> players)
+    private async Task<List<WordHistoryEntry>> ReadWordHistoryAsync(DbConnection conn, Guid gameId)
     {
         var cmd = conn.CreateCommand();
         cmd.CommandText = $"""
-            select word, claimer_id, is_valid, p1_points, p2_points, coalesce({_dialect.JsonToText("points_json")}, '[]')
+            select word, claimer_id, is_valid, coalesce({_dialect.JsonToText("points_json")}, '[]')
             from word_history
             where game_id=@gid
             order by created_at asc
@@ -577,27 +548,15 @@ public sealed class GamesService
             rows.Add(MapHistoryRow(reader));
         }
 
-        var player1Id = players.Count > 0 ? players[0].PlayerId : (Guid?)null;
-        var player2Id = players.Count > 1 ? players[1].PlayerId : (Guid?)null;
-
         return rows.Select(row =>
         {
             var points = JsonSerializer.Deserialize<List<PlayerPoints>>(row.PointsJson) ?? new List<PlayerPoints>();
-            if (points.Count == 0)
-            {
-                if (player1Id.HasValue && row.LegacyPlayer1Points != 0)
-                    points.Add(new PlayerPoints(player1Id.Value, row.LegacyPlayer1Points));
-                if (player2Id.HasValue && row.LegacyPlayer2Points != 0)
-                    points.Add(new PlayerPoints(player2Id.Value, row.LegacyPlayer2Points));
-            }
 
             return new WordHistoryEntry(
                 row.Word,
                 row.ClaimerId,
                 points,
-                row.IsValid,
-                row.LegacyPlayer1Points,
-                row.LegacyPlayer2Points
+                row.IsValid
             );
         }).ToList();
     }
@@ -663,9 +622,7 @@ public sealed class GamesService
             reader.GetString(0),
             ReadGuid(reader, 1),
             ReadBool(reader, 2),
-            reader.GetInt32(3),
-            reader.GetInt32(4),
-            reader.GetString(5)
+            reader.GetString(3)
         );
     }
 

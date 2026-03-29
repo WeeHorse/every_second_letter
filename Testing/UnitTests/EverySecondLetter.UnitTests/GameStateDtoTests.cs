@@ -6,59 +6,11 @@ namespace EverySecondLetter.UnitTests;
 public sealed class GameStateDtoTests
 {
   [Fact]
-  public void ComputedProperties_ReturnDefaults_WhenPlayersListIsEmpty()
-  {
-    var sut = new GameStateDto(
-        Guid.NewGuid(),
-        GameStatus.WaitingForPlayers,
-        string.Empty,
-        null,
-        null,
-        new List<GamePlayerState>(),
-        null,
-        null,
-        new List<WordHistoryEntry>());
-
-    Assert.Equal(Guid.Empty, sut.Player1Id);
-    Assert.Null(sut.Player2Id);
-    Assert.Equal(0, sut.Player1Score);
-    Assert.Equal(0, sut.Player2Score);
-    Assert.Equal(0, sut.Player1Accepts);
-    Assert.Equal(0, sut.Player1Disputes);
-    Assert.Equal(0, sut.Player2Accepts);
-    Assert.Equal(0, sut.Player2Disputes);
-  }
-
-  [Fact]
-  public void ComputedProperties_ReturnFirstPlayerValues_WhenOnePlayerExists()
-  {
-    var player1 = new GamePlayerState(Guid.NewGuid(), "Player 1", 0, 12, 4, 3);
-    var sut = new GameStateDto(
-        Guid.NewGuid(),
-        GameStatus.WaitingForPlayers,
-        string.Empty,
-        player1.PlayerId,
-        null,
-        new List<GamePlayerState> { player1 },
-        null,
-        null,
-        new List<WordHistoryEntry>());
-
-    Assert.Equal(player1.PlayerId, sut.Player1Id);
-    Assert.Null(sut.Player2Id);
-    Assert.Equal(12, sut.Player1Score);
-    Assert.Equal(0, sut.Player2Score);
-    Assert.Equal(4, sut.Player1Accepts);
-    Assert.Equal(3, sut.Player1Disputes);
-    Assert.Equal(0, sut.Player2Accepts);
-    Assert.Equal(0, sut.Player2Disputes);
-  }
-
-  [Fact]
-  public void ComputedProperties_ReturnBothPlayerValues_WhenTwoPlayersExist()
+  public void Constructor_StoresPlayersList_AsProvided()
   {
     var player1 = new GamePlayerState(Guid.NewGuid(), "Player 1", 0, 12, 4, 3);
     var player2 = new GamePlayerState(Guid.NewGuid(), "Player 2", 1, 7, 2, 1);
+
     var sut = new GameStateDto(
         Guid.NewGuid(),
         GameStatus.InProgress,
@@ -70,13 +22,32 @@ public sealed class GameStateDtoTests
         null,
         new List<WordHistoryEntry>());
 
-    Assert.Equal(player1.PlayerId, sut.Player1Id);
-    Assert.Equal(player2.PlayerId, sut.Player2Id);
-    Assert.Equal(12, sut.Player1Score);
-    Assert.Equal(7, sut.Player2Score);
-    Assert.Equal(4, sut.Player1Accepts);
-    Assert.Equal(3, sut.Player1Disputes);
-    Assert.Equal(2, sut.Player2Accepts);
-    Assert.Equal(1, sut.Player2Disputes);
+    Assert.Equal(2, sut.Players.Count);
+    Assert.Equal(player1.PlayerId, sut.Players[0].PlayerId);
+    Assert.Equal(player2.PlayerId, sut.Players[1].PlayerId);
+    Assert.Equal(12, sut.Players[0].Score);
+    Assert.Equal(7, sut.Players[1].Score);
+    Assert.Equal(4, sut.Players[0].AcceptsRemaining);
+    Assert.Equal(1, sut.Players[1].DisputesRemaining);
+  }
+
+  [Fact]
+  public void WordHistoryEntry_UsesGenericPointEntries_WithoutLegacyPlayerColumns()
+  {
+    var claimerId = Guid.NewGuid();
+    var pointEntries = new List<PlayerPoints>
+    {
+      new(Guid.NewGuid(), 6),
+      new(Guid.NewGuid(), -2)
+    };
+
+    var entry = new WordHistoryEntry("TEST", claimerId, pointEntries, IsValid: true);
+
+    Assert.Equal("TEST", entry.Word);
+    Assert.Equal(claimerId, entry.ClaimerId);
+    Assert.True(entry.IsValid);
+    Assert.Equal(2, entry.PlayerPoints.Count);
+    Assert.Equal(6, entry.PlayerPoints[0].Points);
+    Assert.Equal(-2, entry.PlayerPoints[1].Points);
   }
 }

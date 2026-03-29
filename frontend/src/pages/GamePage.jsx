@@ -81,10 +81,15 @@ export default function GamePage() {
   const isMyTurn = gameState?.activePlayerId === player?.token;
   const isPendingDispute = gameState?.status === 'PendingDispute';
   const isFinished = gameState?.status === 'Finished';
-  const areYouPlayer1 = gameState?.player1Id === player?.token;
-  const areYouPlayer2 = gameState?.player2Id === player?.token;
-  const player1DisplayName = gameState?.players?.[0]?.playerName?.trim() || 'Player 1';
-  const player2DisplayName = gameState?.players?.[1]?.playerName?.trim() || 'Player 2';
+  const scoreboardPlayers = (gameState?.players || []).map((p) => {
+    const isYou = p.playerId === player?.token;
+    const name = p.playerName?.trim() || 'Player';
+
+    return {
+      ...p,
+      displayName: isYou ? `You (${player.playerName})` : `They (${name})`,
+    };
+  });
 
   const renderHeader = () => (
     <div className="game-header">
@@ -192,14 +197,7 @@ export default function GamePage() {
           <WordDisplay word={gameState.currentWord} />
 
           <ScoreBoard
-            player1Name={areYouPlayer1 ? `You (${player.playerName})` : `They (${player1DisplayName})`}
-            player1Score={gameState.player1Score}
-            player1Accepts={gameState.player1Accepts}
-            player1Disputes={gameState.player1Disputes}
-            player2Name={areYouPlayer2 ? `You (${player.playerName})` : `They (${player2DisplayName})`}
-            player2Score={gameState.player2Score}
-            player2Accepts={gameState.player2Accepts}
-            player2Disputes={gameState.player2Disputes}
+            players={scoreboardPlayers}
           />
 
           <GameControls

@@ -159,6 +159,7 @@ Se den kanoniska regelbeskrivningen i [Frontend/public/gameplay-and-rules.md](Fr
 - GET /client-ip
 - POST /games
 - POST /games/{id}/join
+- POST /games/{id}/start
 - GET /games/{id}
 - POST /games/{id}/letter
 - POST /games/{id}/claim
@@ -168,8 +169,13 @@ Se den kanoniska regelbeskrivningen i [Frontend/public/gameplay-and-rules.md](Fr
 
 X-Player-Token krav:
 
-- Kravs for: /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
+- Kravs for: /games/{id}/start, /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
 - Valfritt for: /games/{id}/join (anvands for rejoin-beteende)
+
+Noteringar:
+
+- Nuvarande EverySecondLetter startar fortfarande automatiskt nar tillrackligt manga spelare har anslutit.
+- Start-endpointen finns for framtida spelvarianter med manuell start ovanpa samma konkreta word-game-karnan.
 
 ## Testning
 

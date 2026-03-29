@@ -73,4 +73,24 @@ public sealed class JoinGameEngineTests
     Assert.False(plan.ShouldStart);
     Assert.Null(plan.ActivePlayerId);
   }
+
+  [Fact]
+  public void CreatePlan_WhenAutoStartIsDisabled_KeepsGameWaitingEvenWhenEnoughPlayersHaveJoined()
+  {
+    var rules = new EverySecondLetterRules
+    {
+      MinimumPlayersToStart = 2,
+      AutoStartWhenReady = false
+    };
+    var sut = new JoinGameEngine(rules);
+    var player1 = new GamePlayerState(Guid.NewGuid(), "Player 1", 0, 0, 5, 5);
+    var players = new List<GamePlayerState> { player1 };
+
+    var plan = sut.CreatePlan(GameStatus.WaitingForPlayers, players, Guid.NewGuid());
+
+    Assert.False(plan.IsRejoin);
+    Assert.Equal(1, plan.TurnOrder);
+    Assert.False(plan.ShouldStart);
+    Assert.Null(plan.ActivePlayerId);
+  }
 }

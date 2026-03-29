@@ -9,6 +9,7 @@ public class WordGameRules
     public int InitialAccepts { get; set; } = 5;
     public int InitialDisputes { get; set; } = 5;
     public int? MaximumPlayers { get; set; }
+    public bool AutoStartWhenReady { get; set; } = true;
     public string AllowedLetters { get; set; } = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ";
 
     public bool CanJoin(GameStatus status, int currentPlayerCount)
@@ -19,7 +20,12 @@ public class WordGameRules
 
     public bool ShouldStart(int playerCount)
     {
-        return playerCount >= MinimumPlayersToStart;
+        return AutoStartWhenReady && playerCount >= MinimumPlayersToStart;
+    }
+
+    public bool CanStart(GameStatus status, int playerCount)
+    {
+        return status == GameStatus.WaitingForPlayers && playerCount >= MinimumPlayersToStart;
     }
 
     public bool CanClaim(string currentWord, Guid? lastLetterPlayerId, Guid playerId)

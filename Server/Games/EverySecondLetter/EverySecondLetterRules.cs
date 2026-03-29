@@ -11,6 +11,7 @@ public sealed class EverySecondLetterRules : WordGameRules
         MinimumClaimLength = 3;
         InitialAccepts = 5;
         InitialDisputes = 5;
+        AutoStartWhenReady = true;
         AllowedLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ";
         MaximumPlayers = null;
     }

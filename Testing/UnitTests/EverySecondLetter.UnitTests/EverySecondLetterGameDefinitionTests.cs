@@ -35,6 +35,17 @@ public sealed class EverySecondLetterRulesTests
   }
 
   [Theory]
+  [InlineData(GameStatus.WaitingForPlayers, 1, false)]
+  [InlineData(GameStatus.WaitingForPlayers, 2, true)]
+  [InlineData(GameStatus.InProgress, 2, false)]
+  public void CanStart_ReturnsExpectedValue(GameStatus status, int playerCount, bool expected)
+  {
+    var result = _sut.CanStart(status, playerCount);
+
+    Assert.Equal(expected, result);
+  }
+
+  [Theory]
   [InlineData("abc", true)]
   [InlineData("ab", false)]
   [InlineData("", false)]

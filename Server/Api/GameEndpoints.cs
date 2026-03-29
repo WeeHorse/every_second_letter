@@ -28,6 +28,13 @@ public static class GameEndpoints
             return Results.Ok(result);
         });
 
+        endpoints.MapPost("/games/{gameId:guid}/start", async (Guid gameId, HttpRequest http, GamesService games) =>
+        {
+            var playerToken = RequirePlayerToken(http);
+            var state = await games.StartGameAsync(gameId, playerToken);
+            return Results.Ok(state);
+        });
+
         endpoints.MapGet("/games/{gameId:guid}", async (Guid gameId, GamesService games) =>
         {
             var state = await games.GetStateAsync(gameId);

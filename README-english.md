@@ -159,6 +159,7 @@ See the canonical rules document at [Frontend/public/gameplay-and-rules.md](Fron
 - GET /client-ip
 - POST /games
 - POST /games/{id}/join
+- POST /games/{id}/start
 - GET /games/{id}
 - POST /games/{id}/letter
 - POST /games/{id}/claim
@@ -168,8 +169,13 @@ See the canonical rules document at [Frontend/public/gameplay-and-rules.md](Fron
 
 X-Player-Token requirements:
 
-- Required for: /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
+- Required for: /games/{id}/start, /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
 - Optional for: /games/{id}/join (used for rejoin behavior)
+
+Notes:
+
+- The current EverySecondLetter game still auto-starts when enough players have joined.
+- The start endpoint exists to support future manual-start game variants built on the same concrete word-game core.
 
 ## Testing
 

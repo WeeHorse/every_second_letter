@@ -61,19 +61,11 @@ public static class SeedDb
   }
 
   private const string PostgresEnsureSchemaSql = """
-        alter table games
-          add column if not exists p1_accepts int not null default 5,
-          add column if not exists p1_disputes int not null default 5,
-          add column if not exists p2_accepts int not null default 5,
-          add column if not exists p2_disputes int not null default 5;
-
         create table if not exists word_history (
           id uuid,
           game_id uuid not null references games(id) on delete cascade,
           word text not null,
           claimer_id uuid not null,
-          p1_points int not null default 0,
-          p2_points int not null default 0,
           is_valid boolean not null,
           created_at timestamptz not null
         );
@@ -105,20 +97,11 @@ public static class SeedDb
           status text not null,
           current_word text not null default '',
           active_player_id uuid not null,
-          player1_id uuid not null,
-          player2_id uuid null,
           pending_claimer_id uuid null,
           pending_word text null,
           created_at timestamptz not null,
           updated_at timestamptz not null,
           last_letter_player_id uuid null
-        );
-
-        create table if not exists scores (
-          game_id uuid not null references games(id) on delete cascade,
-          player_id uuid not null,
-          score int not null default 0,
-          primary key (game_id, player_id)
         );
 
         create table if not exists contributions (
@@ -133,8 +116,6 @@ public static class SeedDb
           game_id uuid not null references games(id) on delete cascade,
           word text not null,
           claimer_id uuid not null,
-          p1_points int not null default 0,
-          p2_points int not null default 0,
           is_valid boolean not null,
           created_at timestamptz not null
         );
@@ -158,12 +139,6 @@ public static class SeedDb
         alter table game_players
           add column if not exists player_name text not null default '';
 
-        alter table games
-          add column if not exists p1_accepts int not null default 5,
-          add column if not exists p1_disputes int not null default 5,
-          add column if not exists p2_accepts int not null default 5,
-          add column if not exists p2_disputes int not null default 5;
-
         create index if not exists idx_games_updated_at on games(updated_at desc);
     """;
 
@@ -173,24 +148,11 @@ public static class SeedDb
           status text not null,
           current_word text not null default '',
           active_player_id text not null,
-          player1_id text not null,
-          player2_id text null,
           pending_claimer_id text null,
           pending_word text null,
           created_at text not null default CURRENT_TIMESTAMP,
           updated_at text not null default CURRENT_TIMESTAMP,
-          last_letter_player_id text null,
-          p1_accepts integer not null default 5,
-          p1_disputes integer not null default 5,
-          p2_accepts integer not null default 5,
-          p2_disputes integer not null default 5
-        );
-
-        create table if not exists scores (
-          game_id text not null references games(id) on delete cascade,
-          player_id text not null,
-          score integer not null default 0,
-          primary key (game_id, player_id)
+          last_letter_player_id text null
         );
 
         create table if not exists contributions (
@@ -205,8 +167,6 @@ public static class SeedDb
           game_id text not null references games(id) on delete cascade,
           word text not null,
           claimer_id text not null,
-          p1_points integer not null default 0,
-          p2_points integer not null default 0,
           is_valid integer not null,
           created_at text not null default CURRENT_TIMESTAMP,
           points_json text not null default '[]'

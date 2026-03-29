@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<EverySecondLetterRules>();
         services.AddSingleton<WordGameRules>(sp => sp.GetRequiredService<EverySecondLetterRules>());
         services.AddSingleton<JoinGameEngine>();
+        services.AddSingleton<StartGameEngine>();
         services.AddSingleton<PlayLetterEngine>();
         services.AddSingleton<ClaimResolutionEngine>();
         services.AddSingleton<GamesService>();
