@@ -1,180 +1,126 @@
-/* App level styles */
-
-.create-join-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.shell {
+  width: min(960px, 100%);
+  display: grid;
   gap: 16px;
-  margin-bottom: 16px;
 }
 
-.create-join-header h1 {
-  margin-bottom: 0;
-  text-align: left;
+.panel {
+  background: rgba(255, 251, 245, 0.9);
+  border: 1px solid rgba(117, 88, 64, 0.16);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 18px 60px rgba(65, 44, 22, 0.12);
+  backdrop-filter: blur(18px);
 }
 
-.rules-entry-btn {
-  background: #3366cc;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
+.hero {
+  background:
+    radial-gradient(circle at top right, rgba(210, 119, 71, 0.18), transparent 32%),
+    linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(255, 251, 245, 0.88));
 }
 
-.rules-entry-btn:hover {
-  background: #254b98;
+.eyebrow,
+.label,
+.turn-note,
+.small {
+  color: #7a6554;
 }
 
-.rules-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.3);
-  z-index: 999;
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  margin-bottom: 10px;
 }
 
-.rules-overlay.hidden {
-  display: none;
+.lede {
+  max-width: 38rem;
+  color: #574636;
 }
 
-.rules-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 400px;
-  max-width: 100%;
-  height: 100vh;
-  background: #fff;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.18);
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.actions,
+.join-row,
+.play-row,
+.status-row {
   display: flex;
-  flex-direction: column;
-  transform: translateX(0);
-  transition: transform 0.3s ease;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.rules-panel.hidden {
-  transform: translateX(100%);
+.join-row input,
+.play-row input {
+  flex: 1 1 240px;
 }
 
-.rules-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #e6e8ef;
+.notice {
+  border-radius: 16px;
+  padding: 12px 14px;
 }
 
-.rules-header h2 {
-  margin: 0;
-  font-size: 18px;
+.notice.success {
+  background: #ebf8ef;
+  color: #215636;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  color: #666;
+.notice.error {
+  background: #fff0ee;
+  color: #8b2c2c;
 }
 
-.close-btn:hover {
-  color: #111;
+.mono {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+  word-break: break-all;
 }
 
-.rules-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
+.word {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 
-.rules-content h1 {
-  margin-top: 0;
+.players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
-.rules-content h2 {
-  margin-top: 16px;
+.player-card {
+  border-radius: 18px;
+  padding: 14px;
+  background: #fffdf9;
+  border: 1px solid rgba(117, 88, 64, 0.14);
+}
+
+.player-card.active {
+  border-color: #cf6f41;
+  box-shadow: inset 0 0 0 1px #cf6f41;
+}
+
+.player-name {
+  font-weight: 700;
   margin-bottom: 8px;
-  font-size: 16px;
 }
 
-.rules-content h3 {
-  margin-top: 12px;
-  margin-bottom: 6px;
-  font-size: 14px;
-}
+@media (max-width: 720px) {
+  .panel {
+    padding: 18px;
+    border-radius: 18px;
+  }
 
-.rules-content p {
-  margin: 6px 0;
-  line-height: 1.5;
-}
-
-.rules-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 8px 0;
-  font-size: 12px;
-}
-
-.rules-content table th,
-.rules-content table td {
-  border: 1px solid #d4d7e2;
-  padding: 6px;
-  text-align: left;
-}
-
-.rules-content ul,
-.rules-content ol {
-  margin: 6px 0;
-  padding-left: 20px;
-}
-
-.rules-content li {
-  margin: 4px 0;
-  line-height: 1.4;
-}
-
-.rules-content code {
-  background: #f0f2f7;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.rules-content pre {
-  background: #0b1020;
-  color: #e6ebff;
-  padding: 8px;
-  border-radius: 6px;
-  overflow-x: auto;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.rules-content pre code {
-  background: none;
-  color: inherit;
-  padding: 0;
-}
-
-@media (max-width: 768px) {
-  .create-join-header {
+  .actions,
+  .join-row,
+  .play-row,
+  .status-row {
     flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .create-join-header h1 {
-    text-align: center;
-  }
-
-  .rules-entry-btn {
-    width: 100%;
-  }
-
-  .rules-panel {
-    width: 100%;
   }
 }

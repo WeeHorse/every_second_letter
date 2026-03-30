@@ -1,56 +1,28 @@
 {
   "info": {
     "_postman_id": "7c45b18b-cf90-4a8c-925b-c0fd62269f26",
-    "name": "EverySecondLetter API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "API regression flow migrated from Playwright API tests."
+    "name": "EverySecondLetter API - Minimal Demo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Health check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/health",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "health"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('health returns 200', function () {",
-              "  pm.response.to.have.status(200);",
-              "});",
-              "const body = pm.response.json();",
-              "pm.test('health payload has status ok', function () {",
-              "  pm.expect(body.status).to.eql('ok');",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Create game",
+      "name": "Create game as Player 1",
       "request": {
         "method": "POST",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/games",
+          "raw": "{{baseUrl}}/games?playerName=Alice",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "games"
+          ],
+          "query": [
+            {
+              "key": "playerName",
+              "value": "Alice"
+            }
           ]
         }
       },
@@ -65,10 +37,10 @@
               "});",
               "const body = pm.response.json();",
               "pm.collectionVariables.set('gameId', body.gameId);",
-              "pm.collectionVariables.set('p1Token', body.playerToken);",
-              "pm.test('create payload includes ids', function () {",
+              "pm.collectionVariables.set('p1Token', body.playerId);",
+              "pm.test('response includes gameId and playerId', function () {",
               "  pm.expect(body.gameId).to.be.a('string');",
-              "  pm.expect(body.playerToken).to.be.a('string');",
+              "  pm.expect(body.playerId).to.be.a('string');",
               "});"
             ]
           }
@@ -76,12 +48,12 @@
       ]
     },
     {
-      "name": "Join game as player 2",
+      "name": "Join game as Player 2",
       "request": {
         "method": "POST",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/join",
+          "raw": "{{baseUrl}}/games/{{gameId}}/join?playerName=Bob",
           "host": [
             "{{baseUrl}}"
           ],
@@ -89,6 +61,12 @@
             "games",
             "{{gameId}}",
             "join"
+          ],
+          "query": [
+            {
+              "key": "playerName",
+              "value": "Bob"
+            }
           ]
         }
       },
@@ -102,9 +80,9 @@
               "  pm.response.to.have.status(200);",
               "});",
               "const body = pm.response.json();",
-              "pm.collectionVariables.set('p2Token', body.playerToken);",
-              "pm.test('join returns player token', function () {",
-              "  pm.expect(body.playerToken).to.be.a('string');",
+              "pm.collectionVariables.set('p2Token', body.playerId);",
+              "pm.test('join returns playerId', function () {",
+              "  pm.expect(body.playerId).to.be.a('string');",
               "});"
             ]
           }
@@ -133,13 +111,14 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('state fetch returns 200', function () {",
+              "pm.test('get state returns 200', function () {",
               "  pm.response.to.have.status(200);",
               "});",
               "const body = pm.response.json();",
-              "pm.test('state is in progress with 2 players', function () {",
+              "pm.test('state shows InProgress with 2 players', function () {",
               "  pm.expect(body.status).to.eql('InProgress');",
               "  pm.expect(body.players.length).to.eql(2);",
+              "  pm.expect(body.activePlayerId).to.be.a('string');",
               "});"
             ]
           }
@@ -152,22 +131,17 @@
         "method": "POST",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "X-Player-Token",
             "value": "{{p2Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"letter\": \"x\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\"letter\":\"X\"}"
         },
         "url": {
           "raw": "{{baseUrl}}/games/{{gameId}}/letter",
@@ -187,8 +161,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('out-of-turn letter is rejected with 409', function () {",
-              "  pm.response.to.have.status(409);",
+              "pm.test('out-of-turn play is rejected', function () {",
+              "  pm.response.to.have.status(400);",
               "});"
             ]
           }
@@ -196,27 +170,22 @@
       ]
     },
     {
-      "name": "P1 plays T",
+      "name": "P1 plays letter T",
       "request": {
         "method": "POST",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "X-Player-Token",
             "value": "{{p1Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"letter\": \"t\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\"letter\":\"T\"}"
         },
         "url": {
           "raw": "{{baseUrl}}/games/{{gameId}}/letter",
@@ -236,34 +205,37 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.response.to.have.status(200);"
+              "pm.test('play letter returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word updated and turn rotated to P2', function () {",
+              "  pm.expect(body.currentWord).to.eql('T');",
+              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p2Token'));",
+              "});",
+              "pm.collectionVariables.set('nextPlayer', body.activePlayer);"
             ]
           }
         }
       ]
     },
     {
-      "name": "P2 plays E",
+      "name": "P2 plays letter E",
       "request": {
         "method": "POST",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "X-Player-Token",
             "value": "{{p2Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"letter\": \"e\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\"letter\":\"E\"}"
         },
         "url": {
           "raw": "{{baseUrl}}/games/{{gameId}}/letter",
@@ -283,34 +255,36 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.response.to.have.status(200);"
+              "pm.test('P2 play returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word is TE and turn back to P1', function () {",
+              "  pm.expect(body.currentWord).to.eql('TE');",
+              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p1Token'));",
+              "});"
             ]
           }
         }
       ]
     },
     {
-      "name": "P1 plays S",
+      "name": "P1 plays letter S",
       "request": {
         "method": "POST",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
             "key": "X-Player-Token",
             "value": "{{p1Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"letter\": \"s\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\"letter\":\"S\"}"
         },
         "url": {
           "raw": "{{baseUrl}}/games/{{gameId}}/letter",
@@ -330,285 +304,13 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.response.to.have.status(200);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "P1 claims word",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "X-Player-Token",
-            "value": "{{p1Token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/claim",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "claim"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('claim returns pending dispute', function () {",
+              "pm.test('P1 play returns 200', function () {",
               "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status).to.eql('PendingDispute');",
-              "  pm.expect(body.pendingWord).to.eql('TES');",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Claimer cannot accept own claim",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "X-Player-Token",
-            "value": "{{p1Token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/accept",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "accept"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.response.to.have.status(409);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "P2 accepts claim",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "X-Player-Token",
-            "value": "{{p2Token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/accept",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "accept"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('accept resolves claim and resets word', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.status).to.eql('InProgress');",
-              "  pm.expect(body.currentWord).to.eql('');",
-              "  pm.expect(body.pendingWord).to.eql(null);",
-              "  const p2 = body.players.find(function (p) { return p.playerId === pm.collectionVariables.get('p2Token'); });",
-              "  pm.expect(p2).to.not.eql(undefined);",
-              "  pm.expect(p2.acceptsRemaining).to.eql(4);",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Rejoin returns same player token",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "X-Player-Token",
-            "value": "{{p2Token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/join",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "join"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('rejoin returns same token', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.playerToken).to.eql(pm.collectionVariables.get('p2Token'));",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Third player cannot join in-progress game",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/join",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "join"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.response.to.have.status(409);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Validate word CAT",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"word\": \"CAT\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/validate-word",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "validate-word"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('validate-word accepts CAT as valid', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.word).to.eql('CAT');",
-              "  pm.expect(body.valid).to.eql(true);",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Validate clearly invalid word",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"word\": \"ZZZZZZQ\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/validate-word",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "games",
-            "{{gameId}}",
-            "validate-word"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('validate-word rejects invalid word', function () {",
-              "  pm.response.to.have.status(200);",
-              "  const body = pm.response.json();",
-              "  pm.expect(body.word).to.eql('ZZZZZZQ');",
-              "  pm.expect(body.valid).to.eql(false);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word is TES and turn to P2', function () {",
+              "  pm.expect(body.currentWord).to.eql('TES');",
+              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p2Token'));",
               "});"
             ]
           }
@@ -618,16 +320,24 @@
   ],
   "variable": [
     {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
       "key": "gameId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "p1Token",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "p2Token",
-      "value": ""
+      "value": "",
+      "type": "string"
     }
   ]
 }
