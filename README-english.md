@@ -1,224 +1,118 @@
-# EverySecondLetter
+# EverySecondLetter - Minimal Demo
 
-Two-player word game built with .NET 8 Minimal API, PostgreSQL or SQLite, and a React + Vite frontend.
+A minimal two-player word game built with .NET 8 Minimal API and React + Vite. No database, no complex logic—just in-memory game storage and simple turn-based letter play.
 
 ## What This Repo Contains
 
-- Backend API in C# (.NET 8) with SQL persistence.
-- React frontend in Frontend/, built into Server/wwwroot/ for production serving.
-- Gameplay logic for turn-based letter play, claim/dispute scoring, and automatic endgame.
-- System tests using Postman/Newman (API) and Playwright + playwright-bdd (UI).
+- Minimal C# backend (110 LOC) with in-memory game storage via ConcurrentDictionary
+- Single React component in Frontend/, built into Server/wwwroot/
+- 4 simple endpoints: create game, join, fetch state, play letter
+- Unit tests (xUnit) and basic API testing
 
 ## Tech Stack
 
-- Backend: .NET 8 Minimal API, provider-based SQL access (PostgreSQL/SQLite)
-- Frontend: React 18, Vite, React Context
-- Testing: Postman/Newman (API), Playwright + playwright-bdd (UI)
+- Backend: .NET 8 Minimal API, in-memory ConcurrentDictionary (no database)
+- Frontend: React 18, Vite, sessionStorage for player persistence
+- Testing: xUnit (unit tests), Newman API tests
 
 ## Requirements
 
 - .NET 8 SDK
 - Node.js 18+
-- PostgreSQL or SQLite
-- psql (optional but useful)
 
 ## Project Structure
 
 ```text
 .
 ├── Server/
-│   ├── Program.cs
-│   ├── Services/
-│   ├── Gameplay/
-│   ├── wordlists/
-│   └── wwwroot/
+│   ├── Program.cs (110 LOC, complete game rules here)
+│   └── wwwroot/ (built frontend)
 ├── Frontend/
-│   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   └── pages/
+│   │   └── App.jsx (single component)
 │   └── vite.config.js
-└── Testing/SystemTests/
+└── Testing/
+    └── UnitTests/ and SystemTests/
 ```
 
-## Setup
+## Running the App
 
-### 1) Database
-
-Create a PostgreSQL database (for example every_second_letter).
-
-The application initializes and updates required tables automatically on startup.
-
-### 2) Connection String
-
-The app reads connection string from:
-
-1. ConnectionStrings:Default
-2. DATABASE_URL (fallback)
-
-launchSettings.json includes local defaults, but DATABASE_URL can override.
-
-### 3) Provider Switching (Postgres or SQLite)
-
-You can switch provider via either environment variables or config.
-
-Resolution order:
-
-1. ConnectionStrings:Default
-2. DATABASE_URL
-3. DB_PROVIDER + SQLITE_PATH (SQLite mode)
-
-If nothing is set, the default fallback provider is SQLite.
-
-Recommended usage:
-
-- Local development: environment variables
-- Shared/stable setup: config file (ConnectionStrings:Default)
-- CI/deploy: environment variables
-
-Use SQLite via env:
+### Production (integrated frontend & backend)
 
 ```bash
-export DB_PROVIDER=sqlite
-export SQLITE_PATH=every_second_letter.db
+cd Frontend
+npm install
+npm run build
+
+cd ..
 dotnet run --project Server/EverySecondLetter.csproj
 ```
 
-Use Postgres via env:
+Open http://127.0.0.1:5010
 
+### Development (with hot reload)
+
+Terminal 1 (Backend):
 ```bash
-export DB_PROVIDER=postgres
-export DATABASE_URL=postgres://user:pass@host:5432/db
 dotnet run --project Server/EverySecondLetter.csproj
 ```
 
-Use config file:
-
-- Set ConnectionStrings:Default to either:
-  - Postgres connection string, or
-  - SQLite connection string, for example: Data Source=every_second_letter.db
-
-## Run Modes
-
-### Development (recommended)
-
-Terminal 1:
-
+Terminal 2 (Frontend):
 ```bash
 cd Frontend
 npm install
 npm run dev
 ```
 
-Terminal 2:
+Open http://127.0.0.1:5173 (Vite proxies /games calls to backend)
 
-```bash
-dotnet run --project Server/EverySecondLetter.csproj
-```
+## API (4 Endpoints)
 
-Open http://localhost:5173. Vite proxies /games calls to http://localhost:5010.
+- `POST /games?playerName=Alice` — Create new game, returns gameId & playerId
+- `POST /games/{gameId}/join?playerName=Bob` — Join existing game
+- `GET /games/{gameId}` — Fetch current game state (word, players, turn)
+- `POST /games/{gameId}/letter?playerId=...&letter=E` — Play next letter in your word
 
-### Production-like Local Run
+## Frontend
 
-```bash
-cd Frontend
-npm install
-npm run build
-cd ..
-dotnet run --project Server/EverySecondLetter.csproj
-```
-
-Open http://localhost:5010.
-
-## Frontend Notes (Consolidated)
-
-- Frontend is React + Vite and builds to Server/wwwroot/.
-- SPA fallback middleware in Program.cs rewrites non-API, non-file routes to /index.html.
-- Main pages:
-  - RegisterPage
-  - CreateGamePage
-  - JoinGamePage
-  - GamePage
-- Core UI components:
-  - WordDisplay
-  - ScoreBoard
-  - GameControls
-- State is managed in GameContext via useGame().
-- Persistence is sessionStorage-first, with localStorage fallback for legacy data migration.
-- Game polling currently runs every 1000ms on GamePage.
-
-## Gameplay Rules
-
-See the canonical rules document at [Frontend/public/gameplay-and-rules.md](Frontend/public/gameplay-and-rules.md).
-
-## API Overview
-
-- Swagger UI: http://localhost:5010/swagger
-- GET /health
-- GET /client-ip
-- POST /games
-- POST /games/{id}/join
-- POST /games/{id}/start
-- GET /games/{id}
-- POST /games/{id}/letter
-- POST /games/{id}/claim
-- POST /games/{id}/accept
-- POST /games/{id}/dispute
-- POST /games/{id}/validate-word
-
-X-Player-Token requirements:
-
-- Required for: /games/{id}/start, /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
-- Optional for: /games/{id}/join (used for rejoin behavior)
-
-Notes:
-
-- The current EverySecondLetter game still auto-starts when enough players have joined.
-- The start endpoint exists to support future manual-start game variants built on the same concrete word-game core.
+App.jsx is the only React component (~300 LOC):
+- Reads/writes player data from sessionStorage
+- Create game, join, display state, play letter
+- Polls game state every 2 seconds for updates
+- 10+ data-testid attributes for automated testing
 
 ## Testing
 
-Tests live in Testing/SystemTests and are split by project:
-
-- api
-- ui
-
-Unit tests live in Testing/UnitTests/EverySecondLetter.UnitTests and run with xUnit.
-
-Commands:
-
 ```bash
+# Unit tests (xUnit)
+dotnet test Testing/UnitTests/EverySecondLetter.UnitTests/
+
+# API tests (Newman)
 cd Testing/SystemTests
 npm install
-npm run test
 npm run test:api
+
+# UI tests (Playwright BDD)
 npm run test:ui
-npm run test:headed
-dotnet test ../UnitTests/EverySecondLetter.UnitTests/EverySecondLetter.UnitTests.csproj
 ```
 
-Notes:
-
-- API tests run with Newman using the Postman collection in Testing/SystemTests/postman/.
-- Only UI test runs regenerate BDD specs with bddgen.
-- UI tests target baseURL http://localhost:5010.
+- **Unit Tests:** TurnRulesTests (turn order), MinimalContractsTests (data models)
+- **API Tests:** Basic flow create → join → state → play
+- **UI Tests:** One Gherkin scenario for complete gameplay flow
 
 ## Troubleshooting
 
 - 404 on deep link refresh:
-  - Verify frontend build exists in Server/wwwroot and SPA fallback is enabled.
+  - Verify frontend build exists in Server/wwwroot and SPA fallback (`MapFallbackToFile("index.html")`) is enabled in Program.cs.
 - UI tests cannot connect:
-  - Ensure backend is running on http://localhost:5010.
-- Rejoin behavior not restoring state:
-  - Clear sessionStorage/localStorage keys esl_player and esl_game, then register again.
-- Frontend dependency issues:
-
-```bash
-cd Frontend
-rm -rf node_modules package-lock.json
-npm install
-```
+  - Ensure backend is running on http://127.0.0.1:5010.
+- Frontend rebuild needed:
+  ```bash
+  cd Frontend
+  rm -rf dist node_modules package-lock.json
+  npm install
+  npm run build
+  ```
 
 ## Related Docs
 

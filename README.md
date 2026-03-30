@@ -1,224 +1,118 @@
-# EverySecondLetter
+# EverySecondLetter - Minimal Demo
 
-Turordningsbaserat ordspel for tva spelare, byggt med .NET 8 Minimal API, PostgreSQL eller SQLite och ett React + Vite-frontend.
+En minimal två-spelares ordspel byggd med .NET 8 Minimal API och React + Vite. Ingen databas, ingen komplex logik—bara in-memory spellagring och enkla turn-based bokstavsspel.
 
 ## Vad Repon Innehaller
 
-- Backend-API i C# (.NET 8) med SQL-lagring.
-- React-frontend i Frontend/, byggs till Server/wwwroot/ for produktion.
-- Spelregler for bokstavsspel, claim/dispute-poang och automatiskt slutspel.
-- Systemtester med Postman/Newman (API) och Playwright + playwright-bdd (UI).
+- Minimal C# backend (110 LOC) med in-memory spellager via ConcurrentDictionary
+- Enstaka React-komponent i Frontend/, byggd till Server/wwwroot/
+- 4 enkla endpoints: skapa spel, anslut, hämta tillstånd, spela bokstav
+- Enhetstest (xUnit) och basisk API-testning
 
 ## Teknikstack
 
-- Backend: .NET 8 Minimal API, providerbaserad SQL-atkomst (PostgreSQL/SQLite)
-- Frontend: React 18, Vite, React Context
-- Test: Postman/Newman (API), Playwright + playwright-bdd (UI)
+- Backend: .NET 8 Minimal API, in-memory ConcurrentDictionary (ingen databas)
+- Frontend: React 18, Vite, sessionStorage för spelarpersistering
+- Testing: xUnit (enhetstest), Newman API-test
 
 ## Krav
 
 - .NET 8 SDK
 - Node.js 18+
-- PostgreSQL eller SQLite
-- psql (valfritt men praktiskt)
 
 ## Projektstruktur
 
 ```text
 .
 ├── Server/
-│   ├── Program.cs
-│   ├── Services/
-│   ├── Gameplay/
-│   ├── wordlists/
-│   └── wwwroot/
+│   ├── Program.cs (110 LOC, kompletta spelreglerna här)
+│   └── wwwroot/ (byggd frontend)
 ├── Frontend/
-│   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   └── pages/
+│   │   └── App.jsx (enskild komponent)
 │   └── vite.config.js
-└── Testing/SystemTests/
+└── Testing/
+    └── UnitTests/ och SystemTests/
 ```
 
-## Installation
+## Köra Appen
 
-### 1) Databas
-
-Skapa en PostgreSQL-databas (till exempel every_second_letter).
-
-Applikationen initierar och uppdaterar nodvandiga tabeller automatiskt vid uppstart.
-
-### 2) Anslutningsstrang
-
-Applikationen laser anslutningsstrang fran:
-
-1. ConnectionStrings:Default
-2. DATABASE_URL (fallback)
-
-launchSettings.json innehaller lokala standardvarden, men DATABASE_URL kan skriva over.
-
-### 3) Byt Databasprovider (Postgres eller SQLite)
-
-Du kan byta provider via miljovariabler eller config.
-
-Prioritetsordning:
-
-1. ConnectionStrings:Default
-2. DATABASE_URL
-3. DB_PROVIDER + SQLITE_PATH (SQLite-lage)
-
-Om inget anges blir standard/fallback SQLite.
-
-Rekommenderad anvandning:
-
-- Lokal utveckling: miljovariabler
-- Delad/stabil setup: configfil (ConnectionStrings:Default)
-- CI/deploy: miljovariabler
-
-Anvand SQLite via env:
+### Produktion (integrera frontend & backend)
 
 ```bash
-export DB_PROVIDER=sqlite
-export SQLITE_PATH=every_second_letter.db
+cd Frontend
+npm install
+npm run build
+
+cd ..
 dotnet run --project Server/EverySecondLetter.csproj
 ```
 
-Anvand Postgres via env:
+Öppna http://127.0.0.1:5010
 
+### Utveckling (med hot reload)
+
+Terminal 1 (Backend):
 ```bash
-export DB_PROVIDER=postgres
-export DATABASE_URL=postgres://user:pass@host:5432/db
 dotnet run --project Server/EverySecondLetter.csproj
 ```
 
-Anvand configfil:
-
-- Satt ConnectionStrings:Default till antingen:
-  - Postgres-anslutningsstrang, eller
-  - SQLite-anslutningsstrang, till exempel: Data Source=every_second_letter.db
-
-## Korlage
-
-### Utveckling (rekommenderas)
-
-Terminal 1:
-
+Terminal 2 (Frontend):
 ```bash
 cd Frontend
 npm install
 npm run dev
 ```
 
-Terminal 2:
+Öppna http://127.0.0.1:5173 (Vite proxar /games till backend)
 
-```bash
-dotnet run --project Server/EverySecondLetter.csproj
-```
+## API (4 Endpoints)
 
-Oppna http://localhost:5173. Vite proxar /games till http://localhost:5010.
+- `POST /games?playerName=Alice` — Skapa nytt spel, returnerar gameId & playerId
+- `POST /games/{gameId}/join?playerName=Bob` — Anslut till befintligt spel
+- `GET /games/{gameId}` — Hämta aktuellt spelläge (ord, spelare, tur)
+- `POST /games/{gameId}/letter?playerId=...&letter=E` — Spela nästkommande bokstav i sitt ord
 
-### Lokal produktionstest
+## Frontend
 
-```bash
-cd Frontend
-npm install
-npm run build
-cd ..
-dotnet run --project Server/EverySecondLetter.csproj
-```
-
-Oppna http://localhost:5010.
-
-## Frontend Sammanfattning
-
-- Frontend ar byggt med React + Vite och byggs till Server/wwwroot/.
-- SPA-fallback i Program.cs skriver om icke-API och icke-filrutter till /index.html.
-- Huvudsidor:
-  - RegisterPage
-  - CreateGamePage
-  - JoinGamePage
-  - GamePage
-- Centrala komponenter:
-  - WordDisplay
-  - ScoreBoard
-  - GameControls
-- Tillstand hanteras i GameContext via useGame().
-- Persistens ar sessionStorage-forst, med localStorage-fallback for migrering av aldre data.
-- Polling av spelstatus sker for narvarande var 1000 ms i GamePage.
-
-## Spelregler
-
-Se den kanoniska regelbeskrivningen i [Frontend/public/gameplay-and-rules.md](Frontend/public/gameplay-and-rules.md).
-
-## API Oversikt
-
-- Swagger UI: http://localhost:5010/swagger
-- GET /health
-- GET /client-ip
-- POST /games
-- POST /games/{id}/join
-- POST /games/{id}/start
-- GET /games/{id}
-- POST /games/{id}/letter
-- POST /games/{id}/claim
-- POST /games/{id}/accept
-- POST /games/{id}/dispute
-- POST /games/{id}/validate-word
-
-X-Player-Token krav:
-
-- Kravs for: /games/{id}/start, /games/{id}/letter, /games/{id}/claim, /games/{id}/accept, /games/{id}/dispute
-- Valfritt for: /games/{id}/join (anvands for rejoin-beteende)
-
-Noteringar:
-
-- Nuvarande EverySecondLetter startar fortfarande automatiskt nar tillrackligt manga spelare har anslutit.
-- Start-endpointen finns for framtida spelvarianter med manuell start ovanpa samma konkreta word-game-karnan.
+App.jsx är den enda React-komponenten (~300 LOC):
+- Läser/skriver spelardata från sessionStorage
+- Skapa spel, anslut, visa spelläge, spela bokstav
+- Polling var 2 sekund för speluppdateringar
+- 10+ data-testid-attribut för automatiserad testning
 
 ## Testning
 
-Testerna finns i Testing/SystemTests och ar uppdelade i:
-
-- api
-- ui
-
-Enhetstester finns i Testing/UnitTests/EverySecondLetter.UnitTests och kor med xUnit.
-
-Kommandon:
-
 ```bash
+# Enhetstester (xUnit)
+dotnet test Testing/UnitTests/EverySecondLetter.UnitTests/
+
+# API-tester (Newman)
 cd Testing/SystemTests
 npm install
-npm run test
 npm run test:api
+
+# UI-tester (Playwright BDD)
 npm run test:ui
-npm run test:headed
-dotnet test ../UnitTests/EverySecondLetter.UnitTests/EverySecondLetter.UnitTests.csproj
 ```
 
-Noteringar:
-
-- API-tester kor via Newman med Postman-kollektionen i Testing/SystemTests/postman/.
-- Endast UI-tester genererar BDD-specar med bddgen.
-- UI-testerna anvander baseURL http://localhost:5010.
+- **Enhetstester:** TurnRulesTests (turordning), MinimalContractsTests (datamodeller)  
+- **API-tester:** Grundläggande flöde create → join → state → play
+- **UI-tester:** En Gherkin-scenario för complete gameplay flow
 
 ## Felsokning
 
-- 404 vid uppdatering av djup lanka:
-  - Kontrollera att frontend-build finns i Server/wwwroot och att SPA-fallback ar aktiv.
+- 404 vid uppdatering av djup länka:
+  - Kontrollera att frontend-build finns i Server/wwwroot och att SPA-fallback (`MapFallbackToFile("index.html")`) är aktiverad i Program.cs.
 - UI-tester kan inte ansluta:
-  - Kontrollera att backend kor pa http://localhost:5010.
-- Rejoin aterstaller inte spel:
-  - Rensa sessionStorage/localStorage-nycklarna esl_player och esl_game, registrera sedan igen.
-- Problem med frontend-beroenden:
-
-```bash
-cd Frontend
-rm -rf node_modules package-lock.json
-npm install
-```
+  - Kontrollera att backend kör på http://127.0.0.1:5010.
+- Frontend ombyggnad behövs:
+  ```bash
+  cd Frontend
+  rm -rf dist node_modules package-lock.json
+  npm install
+  npm run build
+  ```
 
 ## Relaterad Dokumentation
 
