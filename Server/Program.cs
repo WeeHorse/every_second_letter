@@ -7,9 +7,15 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 var games = new ConcurrentDictionary<Guid, GameState>();
 
 // POST /games?playerName=Alice
+// Catch-all for SPA routing: serve index.html for non-API routes
+app.MapFallbackToFile("index.html");
+
 app.MapPost("/games", (string playerName = "Player") =>
 {
     var gameId = Guid.NewGuid();
