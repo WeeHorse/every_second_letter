@@ -40,10 +40,18 @@ export default function App() {
   async function fetchJson(url, options) {
     const response = await fetch(url, options);
     const text = await response.text();
-    const data = text ? JSON.parse(text) : null;
+    let data = null;
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
 
     if (!response.ok) {
-      throw new Error(typeof data === 'string' ? data : text || 'Request failed');
+      throw new Error(typeof data === 'string' ? data : data?.message || text || 'Request failed');
     }
 
     return data;
@@ -59,6 +67,7 @@ export default function App() {
       setGameState(state);
       setError('');
     } catch (requestError) {
+      setGameState(null);
       setError(requestError.message);
     }
   }
@@ -91,6 +100,7 @@ export default function App() {
         playerId: data.playerId,
       }));
       setMessage('Game created. Share the game ID with the second player.');
+      await loadGameState(data.gameId);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -121,8 +131,40 @@ export default function App() {
       }));
       setMessage('Joined the game.');
       setJoinGameId('');
+      await loadGameState(data.gameId);
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitGameAction(path, body, successMessage) {
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const headers = {
+        'X-Player-Token': session.playerId,
+      };
+
+      if (body) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const data = await fetchJson(path, {
+        method: 'POST',
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      setGameState(data);
+      setMessage(data?.lastResolutionSummary || successMessage);
+      return data;
+    } catch (requestError) {
+      setError(requestError.message);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -135,32 +177,27 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setMessage('');
+    const data = await submitGameAction(
+      `/games/${session.gameId}/letter`,
+      { letter: letter.trim().slice(0, 1) },
+      'Letter played.',
+    );
 
-    try {
-      const data = await fetchJson(`/games/${session.gameId}/letter`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Player-Token': session.playerId,
-        },
-        body: JSON.stringify({ letter: letter.trim().slice(0, 1) }),
-      });
-      setGameState((current) => current ? {
-        ...current,
-        currentWord: data.currentWord,
-        activePlayerId: data.activePlayer,
-      } : current);
+    if (data) {
       setLetter('');
-      setMessage('Letter played.');
-      await loadGameState();
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
     }
+  }
+
+  async function claimWord() {
+    await submitGameAction(`/games/${session.gameId}/claim`, null, 'Word claimed.');
+  }
+
+  async function acceptClaim() {
+    await submitGameAction(`/games/${session.gameId}/accept`, null, 'Claim accepted.');
+  }
+
+  async function disputeClaim() {
+    await submitGameAction(`/games/${session.gameId}/dispute`, null, 'Claim disputed.');
   }
 
   function resetSession() {
@@ -177,15 +214,67 @@ export default function App() {
     setError('');
   }
 
-  const activePlayer = gameState?.players?.find((player) => player.playerId === gameState.activePlayerId);
+  const players = gameState?.players || [];
+  const activePlayer = players.find((player) => player.playerId === gameState?.activePlayerId);
+  const currentPlayer = players.find((player) => player.playerId === session.playerId);
+  const pendingClaim = gameState?.pendingClaim;
+  const claimer = players.find((player) => player.playerId === pendingClaim?.claimerId);
+  const responder = players.find((player) => player.playerId === pendingClaim?.responderId);
   const isPlayersTurn = Boolean(session.playerId && gameState?.activePlayerId === session.playerId);
+  const canClaim = Boolean(
+    session.playerId
+    && gameState?.status === 'InProgress'
+    && (gameState?.currentWord?.length || 0) >= 3
+    && (gameState?.activePlayerId === session.playerId || gameState?.lastLetterPlayerId === session.playerId),
+  );
+  const canAccept = Boolean(
+    session.playerId
+    && gameState?.status === 'PendingDispute'
+    && pendingClaim?.responderId === session.playerId
+    && (currentPlayer?.acceptsRemaining || 0) > 0,
+  );
+  const canDispute = Boolean(
+    session.playerId
+    && gameState?.status === 'PendingDispute'
+    && pendingClaim?.responderId === session.playerId
+    && (currentPlayer?.disputesRemaining || 0) > 0,
+  );
+  const winner = players.find((player) => player.playerId === gameState?.winnerPlayerId);
+  const statusNote = (() => {
+    if (!gameState) {
+      return 'Create or join a game to begin.';
+    }
+
+    if (gameState.status === 'WaitingForPlayers') {
+      return 'Waiting for a second player.';
+    }
+
+    if (gameState.status === 'PendingDispute') {
+      if (pendingClaim?.responderId === session.playerId) {
+        return 'Respond to the pending claim.';
+      }
+
+      return 'Waiting for the opponent to accept or dispute.';
+    }
+
+    if (gameState.status === 'Finished') {
+      return gameState.winnerSummary || 'Game finished.';
+    }
+
+    return isPlayersTurn ? 'Your turn.' : 'Waiting for the active player.';
+  })();
 
   return (
     <main className="shell">
       <section className="panel hero">
-        <p className="eyebrow">Minimal Demo</p>
+        <p className="eyebrow">Full Rules Demo</p>
         <h1 data-testid="app-title">EverySecondLetter</h1>
-        <p className="lede">Create a game, share the game ID, and take turns adding one letter at a time.</p>
+        <p className="lede">Build a word together, then claim it for points and force the opponent to accept or dispute before play continues.</p>
+        <p>
+          <a className="rules-link" href="/gameplay-and-rules.md" target="_blank" rel="noreferrer" data-testid="rules-link">
+            Read full gameplay and rules
+          </a>
+        </p>
       </section>
 
       <section className="panel stack">
@@ -251,6 +340,27 @@ export default function App() {
           </div>
         </div>
 
+        {pendingClaim ? (
+          <div className="notice success">
+            <p><strong>Pending claim:</strong> {claimer?.playerName || 'A player'} claimed {pendingClaim.word}.</p>
+            <p>{responder?.playerName || 'The opponent'} must accept or dispute.</p>
+            <p>Base score: {pendingClaim.baseScore} ({pendingClaim.lettersPlacedByClaimer} letters placed by the claimer).</p>
+          </div>
+        ) : null}
+
+        {gameState?.lastResolutionSummary ? (
+          <div className="notice success">
+            <p>{gameState.lastResolutionSummary}</p>
+          </div>
+        ) : null}
+
+        {gameState?.status === 'Finished' ? (
+          <div className="notice success">
+            <p><strong>Winner:</strong> {winner?.playerName || 'Draw'}</p>
+            <p>{gameState.winnerSummary}</p>
+          </div>
+        ) : null}
+
         <form className="play-row" onSubmit={playLetter}>
           <input
             data-testid="letter-input"
@@ -259,20 +369,32 @@ export default function App() {
             placeholder="One letter"
             maxLength={1}
           />
-          <button data-testid="play-letter-btn" type="submit" disabled={loading || !session.gameId || !session.playerId || !isPlayersTurn}>
+          <button data-testid="play-letter-btn" type="submit" disabled={loading || !session.gameId || !session.playerId || !isPlayersTurn || gameState?.status !== 'InProgress'}>
             Play letter
+          </button>
+          <button type="button" onClick={claimWord} disabled={loading || !session.gameId || !session.playerId || !canClaim}>
+            Claim word
+          </button>
+          <button type="button" className="secondary" onClick={acceptClaim} disabled={loading || !canAccept}>
+            Accept ({currentPlayer?.acceptsRemaining ?? 0})
+          </button>
+          <button type="button" className="secondary" onClick={disputeClaim} disabled={loading || !canDispute}>
+            Dispute ({currentPlayer?.disputesRemaining ?? 0})
           </button>
           <button data-testid="refresh-btn" type="button" className="secondary" onClick={() => loadGameState()} disabled={loading || !session.gameId}>
             Refresh
           </button>
         </form>
 
-        <p data-testid="turn-note" className="turn-note">{isPlayersTurn ? 'Your turn.' : 'Waiting for the active player.'}</p>
+        <p data-testid="turn-note" className="turn-note">{statusNote}</p>
 
         <div className="players">
-          {(gameState?.players || []).map((player) => (
+          {players.map((player) => (
             <article key={player.playerId} className={player.playerId === gameState.activePlayerId ? 'player-card active' : 'player-card'}>
               <p className="player-name">{player.playerName}</p>
+              <p>Score: {player.score}</p>
+              <p>Accepts left: {player.acceptsRemaining}</p>
+              <p>Disputes left: {player.disputesRemaining}</p>
               <p className="mono small">{player.playerId}</p>
             </article>
           ))}

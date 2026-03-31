@@ -38,6 +38,19 @@
   color: #574636;
 }
 
+.rules-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: #2f2419;
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.rules-link:hover {
+  color: #cf6f41;
+}
+
 .stack {
   display: grid;
   gap: 16px;

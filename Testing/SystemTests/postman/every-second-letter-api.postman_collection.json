@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "7c45b18b-cf90-4a8c-925b-c0fd62269f26",
-    "name": "EverySecondLetter API - Minimal Demo",
+    "name": "EverySecondLetter API - Full Rules Demo",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -170,6 +170,385 @@
       ]
     },
     {
+      "name": "P1 plays letter Q",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"Q\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('play letter returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word updated and turn rotated to P2', function () {",
+              "  pm.expect(body.currentWord).to.eql('Q');",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
+              "});",
+              "pm.collectionVariables.set('nextPlayer', body.activePlayerId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 plays letter Z",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"Z\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('P2 play returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word is QZ and turn back to P1', function () {",
+              "  pm.expect(body.currentWord).to.eql('QZ');",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p1Token'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 plays letter X",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"X\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('P1 play returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('word is QZX and turn to P2', function () {",
+              "  pm.expect(body.currentWord).to.eql('QZX');",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 claims invalid word QZX",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/claim",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "claim"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('claim returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.test('claim enters pending dispute with expected base score', function () {",
+              "  pm.expect(body.status).to.eql('PendingDispute');",
+              "  pm.expect(body.pendingClaim.word).to.eql('QZX');",
+              "  pm.expect(body.pendingClaim.baseScore).to.eql(4);",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 disputes invalid word",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/dispute",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "dispute"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('invalid dispute returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "const alice = body.players.find(player => player.playerId === pm.collectionVariables.get('p1Token'));",
+              "const bob = body.players.find(player => player.playerId === pm.collectionVariables.get('p2Token'));",
+              "pm.test('invalid dispute awards responder and clears the round', function () {",
+              "  pm.expect(body.status).to.eql('InProgress');",
+              "  pm.expect(body.currentWord).to.eql('');",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
+              "  pm.expect(alice.score).to.eql(0);",
+              "  pm.expect(bob.score).to.eql(2);",
+              "  pm.expect(bob.disputesRemaining).to.eql(4);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 plays letter T",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"T\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('P2 starts the next round', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.currentWord).to.eql('T');",
+              "pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p1Token'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P1 plays letter E",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p1Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"E\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('P1 continues valid word setup', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.currentWord).to.eql('TE');",
+              "pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "P2 plays letter S",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Player-Token",
+            "value": "{{p2Token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"letter\":\"S\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "games",
+            "{{gameId}}",
+            "letter"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('P2 plays S', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "const body = pm.response.json();",
+              "pm.expect(body.currentWord).to.eql('TES');",
+              "pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p1Token'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "P1 plays letter T",
       "request": {
         "method": "POST",
@@ -205,47 +584,36 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('play letter returns 200', function () {",
+              "pm.test('P1 completes TEST', function () {",
               "  pm.response.to.have.status(200);",
               "});",
               "const body = pm.response.json();",
-              "pm.test('word updated and turn rotated to P2', function () {",
-              "  pm.expect(body.currentWord).to.eql('T');",
-              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p2Token'));",
-              "});",
-              "pm.collectionVariables.set('nextPlayer', body.activePlayer);"
+              "pm.expect(body.currentWord).to.eql('TEST');",
+              "pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));"
             ]
           }
         }
       ]
     },
     {
-      "name": "P2 plays letter E",
+      "name": "P1 claims valid word TEST",
       "request": {
         "method": "POST",
         "header": [
           {
             "key": "X-Player-Token",
-            "value": "{{p2Token}}"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+            "value": "{{p1Token}}"
           }
         ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"letter\":\"E\"}"
-        },
         "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "raw": "{{baseUrl}}/games/{{gameId}}/claim",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "games",
             "{{gameId}}",
-            "letter"
+            "claim"
           ]
         }
       },
@@ -255,13 +623,15 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('P2 play returns 200', function () {",
+              "pm.test('second claim returns 200', function () {",
               "  pm.response.to.have.status(200);",
               "});",
               "const body = pm.response.json();",
-              "pm.test('word is TE and turn back to P1', function () {",
-              "  pm.expect(body.currentWord).to.eql('TE');",
-              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p1Token'));",
+              "pm.test('valid word claim enters pending dispute', function () {",
+              "  pm.expect(body.status).to.eql('PendingDispute');",
+              "  pm.expect(body.pendingClaim.word).to.eql('TEST');",
+              "  pm.expect(body.pendingClaim.baseScore).to.eql(4);",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
               "});"
             ]
           }
@@ -269,32 +639,24 @@
       ]
     },
     {
-      "name": "P1 plays letter S",
+      "name": "P2 disputes valid word",
       "request": {
         "method": "POST",
         "header": [
           {
             "key": "X-Player-Token",
-            "value": "{{p1Token}}"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json"
+            "value": "{{p2Token}}"
           }
         ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"letter\":\"S\"}"
-        },
         "url": {
-          "raw": "{{baseUrl}}/games/{{gameId}}/letter",
+          "raw": "{{baseUrl}}/games/{{gameId}}/dispute",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "games",
             "{{gameId}}",
-            "letter"
+            "dispute"
           ]
         }
       },
@@ -304,13 +666,19 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('P1 play returns 200', function () {",
+              "pm.test('valid dispute returns 200', function () {",
               "  pm.response.to.have.status(200);",
               "});",
               "const body = pm.response.json();",
-              "pm.test('word is TES and turn to P2', function () {",
-              "  pm.expect(body.currentWord).to.eql('TES');",
-              "  pm.expect(body.activePlayer).to.eql(pm.collectionVariables.get('p2Token'));",
+              "const alice = body.players.find(player => player.playerId === pm.collectionVariables.get('p1Token'));",
+              "const bob = body.players.find(player => player.playerId === pm.collectionVariables.get('p2Token'));",
+              "pm.test('valid dispute awards bonus to claimer and clears the round', function () {",
+              "  pm.expect(body.status).to.eql('InProgress');",
+              "  pm.expect(body.currentWord).to.eql('');",
+              "  pm.expect(body.activePlayerId).to.eql(pm.collectionVariables.get('p2Token'));",
+              "  pm.expect(alice.score).to.eql(6);",
+              "  pm.expect(bob.score).to.eql(2);",
+              "  pm.expect(bob.disputesRemaining).to.eql(3);",
               "});"
             ]
           }
