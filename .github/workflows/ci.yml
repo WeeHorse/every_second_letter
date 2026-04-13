@@ -26,7 +26,6 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Debug working directory
-        working-directory: Frontend
         run: |
           pwd
           ls -la
@@ -39,12 +38,8 @@ jobs:
 
       - name: Restore npm dependencies
         working-directory: Frontend
-        run: |
-          pwd
-          ls -la
+        run: npm ci
 
       - name: Build npm
         working-directory: Frontend
-        run: |
-          pwd
-          ls -la
+        run: npm run build
