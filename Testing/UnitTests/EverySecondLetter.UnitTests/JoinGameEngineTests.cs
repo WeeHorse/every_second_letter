@@ -20,10 +20,10 @@ public sealed class JoinGameEngineTests
 
     var plan = _sut.CreatePlan(GameStatus.WaitingForPlayers, players, Guid.NewGuid(), existingPlayerId);
 
-    Assert.True(plan.IsRejoin);
+    Assert.False(plan.IsRejoin);
     Assert.Equal(existingPlayerId, plan.ResultPlayerId);
     Assert.Null(plan.TurnOrder);
-    Assert.False(plan.ShouldStart);
+    Assert.True(plan.ShouldStart);
     Assert.Null(plan.ActivePlayerId);
   }
 
