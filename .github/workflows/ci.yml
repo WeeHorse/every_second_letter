@@ -10,26 +10,35 @@ on:
     branches: ["publish"]
 
 jobs:
+  # Main build job that runs on Ubuntu and performs CI for both backend (.NET) and frontend (Node.js)
   build:
     runs-on: ubuntu-latest
 
     steps:
+      # Check out the repository code
       - uses: actions/checkout@v4
+
+      # Install the .NET SDK (version 10.0.x) needed to build the backend
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Restore dependencies
 
+      # Download and restore all NuGet dependencies for the .NET project
+      - name: Restore dependencies
         run: dotnet restore
+
+      # Compile the .NET solution (skip restore since dependencies were already downloaded)
       - name: Build
         run: dotnet build --no-restore
 
+      # Debug step to show current working directory and directory contents
       - name: Debug working directory
         run: |
           pwd
           ls -la
 
+      # Install Node.js runtime (version 22) needed to build the React frontend
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -37,10 +46,30 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
           cache: "npm"
 
+      # Install npm dependencies for the frontend project using clean install (package-lock.json enforced)
       - name: Restore npm dependencies
         working-directory: frontend
         run: npm ci
 
+      # Build the React frontend project (creates optimized production build)
       - name: Build npm
         working-directory: frontend
         run: npm run build
+      # Run the dotnet server in the background for testing
+      - name: Run dotnet server
+        working-directory: Server
+        run: |
+          dotnet run &
+          sleep 5
+          # Optional: Add health check or tests here
+          echo "Server started"
+
+      # Install npm dependencies for system tests
+      - name: Install test dependencies
+        working-directory: Testing/SystemTests
+        run: npm ci
+
+      # Run all tests (unit, API, and UI)
+      - name: Run all tests
+        working-directory: Testing/SystemTests
+        run: npm test
