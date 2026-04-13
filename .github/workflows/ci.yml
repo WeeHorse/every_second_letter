@@ -67,7 +67,7 @@ jobs:
       # Install npm dependencies for system tests
       - name: Install test dependencies
         working-directory: Testing/SystemTests
-        run: npm ci
+        run: npm ci && npx playwright install
 
       # Run all tests (unit, API, and UI)
       - name: Run unit tests
