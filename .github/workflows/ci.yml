@@ -35,11 +35,3 @@ jobs:
         with:
           node-version: 22
           cache: "npm"
-
-      - name: Restore npm dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build npm
-        working-directory: frontend
-        run: npm run build
