@@ -66,10 +66,17 @@ jobs:
 
       # Install npm dependencies for system tests
       - name: Install test dependencies
-        working-directory: Testing/SystemTests
+
         run: npm ci
 
       # Run all tests (unit, API, and UI)
-      - name: Run all tests
+      - name: Run unit tests
+        run: dotnet test
+
+      - name: Run api tests
         working-directory: Testing/SystemTests
-        run: npm test
+        run: npm run test:api
+
+      - name: Run system tests
+        working-directory: Testing/SystemTests
+        run: npm run test:ui
