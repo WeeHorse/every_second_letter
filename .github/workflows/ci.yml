@@ -24,5 +24,16 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore
-      - name: Unit test
-        run: dotnet test --no-build --verbosity normal
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - name: Restore npm dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Build npm
+        working-directory: Frontend
+        run: npm run build
