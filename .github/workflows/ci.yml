@@ -30,6 +30,12 @@ jobs:
         with:
           node-version: 22
           cache: "npm"
+
+      - name: Debug working directory
+        run: |
+          pwd
+          ls -la
+
       - name: Restore npm dependencies
         working-directory: Frontend
         run: npm ci
