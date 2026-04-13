@@ -37,9 +37,9 @@ jobs:
           cache: "npm"
 
       - name: Restore npm dependencies
-        working-directory: Frontend
+        working-directory: frontend
         run: npm ci
 
       - name: Build npm
-        working-directory: Frontend
+        working-directory: frontend
         run: npm run build
