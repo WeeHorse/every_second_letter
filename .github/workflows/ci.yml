@@ -24,10 +24,14 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      # Download and restore all NuGet dependencies for the .NET project
-      - name: Restore dependencies
-        run: dotnet restore
-
+      # Cache NuGet packages — shared across all workflows by the same cache key
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
       # Compile the .NET solution (skip restore since dependencies were already downloaded)
       - name: Build
         run: dotnet build --no-restore
@@ -39,12 +43,15 @@ jobs:
           ls -la
 
       # Install Node.js runtime (version 22) needed to build the React frontend
+      # Both lock files are included in the cache key so the same cache covers frontend and system tests
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache-dependency-path: frontend/package-lock.json
           cache: "npm"
+          cache-dependency-path: |
+            Frontend/package-lock.json
+            Testing/SystemTests/package-lock.json
 
       # Install npm dependencies for the frontend project using clean install (package-lock.json enforced)
       - name: Restore npm dependencies

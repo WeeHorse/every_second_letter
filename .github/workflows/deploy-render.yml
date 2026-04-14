@@ -20,6 +20,15 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      # Cache NuGet packages — shared across all workflows by the same cache key
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       # Install Node.js 22 for building the React frontend
       - name: Setup Node.js
         uses: actions/setup-node@v4
