@@ -32,6 +32,11 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
+
+      # Download and restore all NuGet dependencies for the .NET projects
+      - name: Restore dependencies
+        run: dotnet restore
+
       # Compile the .NET solution (skip restore since dependencies were already downloaded)
       - name: Build
         run: dotnet build --no-restore
@@ -55,12 +60,12 @@ jobs:
 
       # Install npm dependencies for the frontend project using clean install (package-lock.json enforced)
       - name: Restore npm dependencies
-        working-directory: frontend
+        working-directory: Frontend
         run: npm ci
 
       # Build the React frontend project (creates optimized production build)
       - name: Build npm
-        working-directory: frontend
+        working-directory: Frontend
         run: npm run build
       # Run the dotnet server in the background for testing
       - name: Run dotnet server
