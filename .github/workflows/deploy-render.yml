@@ -1,13 +1,14 @@
 name: Deploy to Render
 
 on:
-  push:
-    branches: ["publish"]
-  pull_request:
+  workflow_run:
+    workflows: [".NET"]
+    types: [completed]
     branches: ["publish"]
 
 jobs:
   ci-and-deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
