@@ -5,9 +5,9 @@ name: .NET
 
 on:
   push:
-    branches: ["publish"]
+    branches: ["disabled_publish"]
   pull_request:
-    branches: ["publish"]
+    branches: ["disabled_publish"]
 
 jobs:
   # Main build job that runs on Ubuntu and performs CI for both backend (.NET) and frontend (Node.js)
@@ -22,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 8.0.x
 
       # Download and restore all NuGet dependencies for the .NET project
       - name: Restore dependencies
@@ -69,14 +69,16 @@ jobs:
         working-directory: Testing/SystemTests
         run: npm ci && npx playwright install
 
-      # Run all tests (unit, API, and UI)
+      # Run Unit tests
       - name: Run unit tests
         run: dotnet test
 
+      # Run API tests
       - name: Run api tests
         working-directory: Testing/SystemTests
         run: npm run test:api
 
+      # Run UI tests
       - name: Run system tests
         working-directory: Testing/SystemTests
         run: npm run test:ui

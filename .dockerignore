@@ -1,0 +1,31 @@
+# Version control
+.git
+.gitignore
+
+# CI/CD
+.github/
+
+# Test projects — not needed in the image
+Testing/
+
+# Local frontend dev files — frontend is built in the Docker build stage
+Frontend/node_modules/
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# Local database files
+*.db
+*.db-shm
+*.db-wal
+
+# IDE and OS files
+.vscode/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# README and docs
+*.md

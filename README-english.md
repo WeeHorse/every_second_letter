@@ -220,6 +220,32 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
+## Render Deployment
+
+The app is deployed to [Render](https://render.com) as a Docker-based web service.
+
+### How it works
+
+- **Single Docker container** runs the ASP.NET Core app, which also serves the React frontend as static files from `wwwroot`.
+- The `Dockerfile` is a multi-stage build: Node 22 builds the React frontend first, then .NET 8 SDK builds and publishes the backend, and finally the minimal ASP.NET runtime image is used.
+- Render sets a `PORT` environment variable at runtime. The container reads it via `ASPNETCORE_URLS=http://+:${PORT}`.
+
+### CI/CD
+
+The `.github/workflows/deploy-render.yml` workflow runs on every push to `publish` and:
+1. Builds the React frontend (output goes into `Server/wwwroot`)
+2. Runs all .NET unit tests
+3. Validates the Docker build
+4. Triggers a Render deploy via the deploy hook stored in the `RENDER_DEPLOY_HOOK_URL` GitHub secret
+
+To set up the deploy hook, go to your Render service → **Settings → Deploy Hook**, copy the URL, and add it as a secret in your GitHub repo settings.
+
+### SQLite on Render
+
+The app uses SQLite by default. Render's filesystem is **ephemeral** — the database is reset on every restart or redeploy. This is intentional for this project; the app seeds its schema automatically on startup.
+
+If persistence is ever needed, configure a [Render Persistent Disk](https://render.com/docs/disks) (paid plans) and set the `SQLITE_PATH` environment variable to a path on the mounted disk (e.g. `/data/every_second_letter.db`).
+
 ## Related Docs
 
 - TECH-DEBT.md
