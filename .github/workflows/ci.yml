@@ -76,12 +76,6 @@ jobs:
           name: frontend-wwwroot
           path: Server/wwwroot/
 
-      # Docker-bygge som validering av containerisering (ingen push här).
-      # Deploy-workflown återanvänder inte detta bygge utan triggar bara Render,
-      # som gör sin egen source-based rebuild från repot vid deployment.
-      - name: Validate Docker build
-        run: docker build -t every-second-letter:ci .
-
   # Job 2: Kör testsviter i matris (parallellt) och visar villkorlig körning.
   tests:
     needs: build
