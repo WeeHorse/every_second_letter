@@ -138,13 +138,15 @@ jobs:
       - name: Validate Docker build
         run: docker build -t every-second-letter:ci .
 
-      # SECURITY - Container security gate: faila på CRITICAL findings.
+      # SECURITY - Container security gate: faila på fixbara CRITICAL findings.
+      # --ignore-unfixed undantar CVE:er som saknar patch (t.ex. "will_not_fix" i basimage).
       - name: Scan Docker image with Trivy (CRITICAL)
         run: |
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.63.0 image \
             --severity CRITICAL \
+            --ignore-unfixed \
             --exit-code 1 \
             every-second-letter:ci
 
