@@ -117,12 +117,34 @@ jobs:
           cat "$report" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload markdown test report
+        id: upload_markdown_report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: test-report-markdown
           path: TestResults/test-report.md
           if-no-files-found: error
+
+      - name: Upload raw test result files
+        id: upload_raw_test_results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-raw
+          path: |
+            TestResults/**/*.trx
+            Testing/SystemTests/test-results/**/*.xml
+          if-no-files-found: warn
+
+      # Add clickable links in the GitHub run summary so reports are easy to open.
+      - name: Add report links to summary
+        if: ${{ always() }}
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Report Links" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Workflow run artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Markdown test report artifact](${{ steps.upload_markdown_report.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Raw test result files artifact](${{ steps.upload_raw_test_results.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
 
       # Tests failure gate
       - name: Fail workflow if any test suite failed
