@@ -7,6 +7,21 @@ on:
     branches: ["publish"]
 
 jobs:
+  # Job 0: SECURITY - Secrets scan för att tidigt fånga läckta nycklar i repo/historik.
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Gitleaks failar jobbet om hemligheter hittas.
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # Job 1: Bygger backend + frontend och publicerar artefakter som andra jobb kan använda.
   build:
     runs-on: ubuntu-latest
@@ -34,6 +49,17 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      # SECURITY - Dependency gate för .NET (transitiva inkluderade).
+      # Failar om rapporten innehåller High/Critical.
+      - name: Scan .NET dependencies for vulnerabilities
+        run: |
+          dotnet list Server/EverySecondLetter.csproj package --vulnerable --include-transitive > dotnet-vulnerabilities.txt
+          cat dotnet-vulnerabilities.txt
+          if grep -Eiq "(Critical|High)" dotnet-vulnerabilities.txt; then
+            echo "High/Critical vulnerabilities found in .NET dependencies."
+            exit 1
+          fi
+
       # Kompilera backend utan ny restore (snabbare).
       - name: Build
         run: dotnet build --no-restore
@@ -52,6 +78,16 @@ jobs:
       - name: Install frontend dependencies
         working-directory: Frontend
         run: npm ci
+
+      # SECURITY - Dependency gate för frontend (npm).
+      - name: Scan frontend npm dependencies
+        working-directory: Frontend
+        run: npm audit --audit-level=high
+
+      # SECURITY - Dependency gate för testverktyg (npm i systemtester).
+      - name: Scan system test npm dependencies
+        working-directory: Testing/SystemTests
+        run: npm audit --audit-level=high
 
       # Bygg frontend till Server/wwwroot (via Vite outDir-konfiguration).
       - name: Build frontend
@@ -82,9 +118,19 @@ jobs:
       - name: Validate Docker build
         run: docker build -t every-second-letter:ci .
 
+      # SECURITY - Container security gate: faila på CRITICAL findings.
+      - name: Scan Docker image with Trivy (CRITICAL)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.63.0 image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            every-second-letter:ci
+
   # Job 2: Kör testsviter i matris (parallellt) och visar villkorlig körning.
   tests:
-    needs: build
+    needs: [security, build]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
