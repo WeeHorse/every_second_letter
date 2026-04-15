@@ -89,8 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [unit]
-        #[unit, api, ui]
+        suite: [unit, api, ui]
 
     steps:
       # Hämta källkod för testjobbet.
