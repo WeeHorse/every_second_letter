@@ -7,63 +7,19 @@ on:
     branches: ["publish"]
 
 jobs:
-  ci-and-deploy:
+  deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
-      # Check out the repository code
-      - uses: actions/checkout@v4
-
-      # Install .NET 8 SDK for building and testing the backend
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      # Cache NuGet packages — shared across all workflows by the same cache key
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      # Install Node.js 22 for building the React frontend
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: Frontend/package-lock.json
-
-      # Install npm dependencies for the frontend
-      - name: Install frontend dependencies
-        working-directory: Frontend
-        run: npm ci
-
-      # Build the React app — Vite outputs directly into Server/wwwroot
-      - name: Build frontend
-        working-directory: Frontend
-        run: npm run build
-
-      # Restore NuGet dependencies
-      - name: Restore .NET dependencies
-        run: dotnet restore
-
-      # Run all .NET unit tests to validate the backend
-      - name: Run dotnet tests
-        run: dotnet test --no-restore
-
-      # Build the Docker image to validate the Dockerfile is correct.
-      # The image is not pushed — Render builds its own image from the repo.
-      - name: Validate Docker build
-        run: docker build -t every-second-letter:ci .
+      # This workflow intentionally does not rebuild or retest the app.
+      # CI in .github/workflows/ci.yml already restores, builds, tests, and validates
+      # the Dockerfile. After CI succeeds on the publish branch, this workflow only
+      # tells Render to start its own source-based deployment.
 
       # Trigger a Render deployment by calling the deploy hook.
+      # Render then clones the repository and rebuilds the container from Dockerfile.
       # The RENDER_DEPLOY_HOOK_URL secret must be set in the GitHub repo settings.
-      # Render will clone the repo and build the Docker image itself.
       - name: Trigger Render deployment
         run: |
           curl --fail-with-body -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
