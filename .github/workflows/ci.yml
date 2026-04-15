@@ -55,6 +55,7 @@ jobs:
       - name: Build npm
         working-directory: frontend
         run: npm run build
+
       # Run the dotnet server in the background for testing
       - name: Run dotnet server
         working-directory: Server
@@ -71,12 +72,66 @@ jobs:
 
       # Run all tests (unit, API, and UI)
       - name: Run unit tests
-        run: dotnet test
+        id: unit_tests
+        continue-on-error: true
+        run: dotnet test --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
 
       - name: Run api tests
+        id: api_tests
+        continue-on-error: true
         working-directory: Testing/SystemTests
-        run: npm run test:api
+        run: npm run test:api:ci
 
       - name: Run system tests
+        id: ui_tests
+        continue-on-error: true
         working-directory: Testing/SystemTests
-        run: npm run test:ui
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: test-results/playwright-ui.xml
+        run: |
+          npm run bdd:gen
+          npx playwright test --project=ui --reporter=list,junit
+
+      # Create a markdown report and publish it to the run summary.
+      # The same markdown file is also uploaded as an artifact for later download.
+      - name: Create markdown test report
+        if: ${{ always() }}
+        run: |
+          mkdir -p TestResults
+          report="TestResults/test-report.md"
+
+          echo "# CI Test Report" > "$report"
+          echo "" >> "$report"
+          echo "- Workflow: ${{ github.workflow }}" >> "$report"
+          echo "- Run: #${{ github.run_number }}" >> "$report"
+          echo "- Commit: ${{ github.sha }}" >> "$report"
+          echo "" >> "$report"
+          echo "## Suite Status" >> "$report"
+          echo "- Unit: ${{ steps.unit_tests.outcome }}" >> "$report"
+          echo "- API: ${{ steps.api_tests.outcome }}" >> "$report"
+          echo "- UI: ${{ steps.ui_tests.outcome }}" >> "$report"
+          echo "" >> "$report"
+          echo "## Result Files" >> "$report"
+          find TestResults Testing/SystemTests/test-results -type f 2>/dev/null | sed 's/^/- /' >> "$report" || true
+
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload markdown test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-markdown
+          path: TestResults/test-report.md
+          if-no-files-found: error
+
+      # Tests failure gate
+      - name: Fail workflow if any test suite failed
+        if: ${{ always() }}
+        run: |
+          if [ "${{ steps.unit_tests.outcome }}" != "success" ] || \
+             [ "${{ steps.api_tests.outcome }}" != "success" ] || \
+             [ "${{ steps.ui_tests.outcome }}" != "success" ]; then
+            echo "One or more test suites failed."
+            exit 1
+          fi
+.
