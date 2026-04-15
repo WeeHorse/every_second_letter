@@ -76,6 +76,12 @@ jobs:
           name: frontend-wwwroot
           path: Server/wwwroot/
 
+      # Docker-bygge som validering av containerisering (ingen push här).
+      # Deploy-workflown återanvänder inte detta bygge utan triggar bara Render,
+      # som gör sin egen source-based rebuild från repot vid deployment.
+      - name: Validate Docker build
+        run: docker build -t every-second-letter:ci .
+
   # Job 2: Kör testsviter i matris (parallellt) och visar villkorlig körning.
   tests:
     needs: build
@@ -83,7 +89,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [unit] # [unit, api, ui]
+        suite: [unit]
+        #[unit, api, ui]
 
     steps:
       # Hämta källkod för testjobbet.
@@ -143,9 +150,9 @@ jobs:
           cd Testing/SystemTests
           npm run test:api:ci
 
-      # UI-testsvit: körs bara på push (exempel på villkorlig körning för dyrare tester).
+      # UI-testsvit:
       - name: Run UI tests
-        if: ${{ matrix.suite == 'ui' && github.event_name == 'push' }}
+        if: ${{ matrix.suite == 'ui' }}
         run: |
           dotnet run --project Server/EverySecondLetter.csproj --urls http://localhost:5010 &
           sleep 8
