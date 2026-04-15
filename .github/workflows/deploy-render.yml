@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [".NET"]
     types: [completed]
-    branches: ["publish"]
+    branches: ["disabled_publish"]
 
 jobs:
   deploy:
