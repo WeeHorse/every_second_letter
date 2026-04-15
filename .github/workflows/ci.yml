@@ -1,3 +1,6 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
 name: .NET
 
 on:
@@ -7,189 +10,73 @@ on:
     branches: ["publish"]
 
 jobs:
-  # Job 1: Bygger backend + frontend och publicerar artefakter som andra jobb kan använda.
+  # Main build job that runs on Ubuntu and performs CI for both backend (.NET) and frontend (Node.js)
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Hämta källkoden.
+      # Check out the repository code
       - uses: actions/checkout@v4
 
-      # Installera .NET 8 SDK (matchar projektets net8.0-target).
+      # Install the .NET SDK (version 10.0.x) needed to build the backend
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
-      # Cacha NuGet-paket för snabbare restores mellan körningar och workflows.
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      # Restore innan build/test så project.assets.json alltid finns.
+      # Download and restore all NuGet dependencies for the .NET project
       - name: Restore dependencies
         run: dotnet restore
 
-      # Kompilera backend utan ny restore (snabbare).
+      # Compile the .NET solution (skip restore since dependencies were already downloaded)
       - name: Build
         run: dotnet build --no-restore
 
-      # Installera Node.js och aktivera npm-cache via lockfiler.
+      # Debug step to show current working directory and directory contents
+      - name: Debug working directory
+        run: |
+          pwd
+          ls -la
+
+      # Install Node.js runtime (version 22) needed to build the React frontend
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache-dependency-path: frontend/package-lock.json
           cache: "npm"
-          cache-dependency-path: |
-            Frontend/package-lock.json
-            Testing/SystemTests/package-lock.json
 
-      # Installera frontend-beroenden deterministiskt.
-      - name: Install frontend dependencies
-        working-directory: Frontend
+      # Install npm dependencies for the frontend project using clean install (package-lock.json enforced)
+      - name: Restore npm dependencies
+        working-directory: frontend
         run: npm ci
 
-      # Bygg frontend till Server/wwwroot (via Vite outDir-konfiguration).
-      - name: Build frontend
-        working-directory: Frontend
+      # Build the React frontend project (creates optimized production build)
+      - name: Build npm
+        working-directory: frontend
         run: npm run build
+      # Run the dotnet server in the background for testing
+      - name: Run dotnet server
+        working-directory: Server
+        run: |
+          dotnet run &
+          sleep 5
+          # Optional: Add health check or tests here
+          echo "Server started"
 
-      # Publicera backend för artefakt/dokumentation (visar artifact-flöde i pipelinen).
-      - name: Publish backend
-        run: dotnet publish Server/EverySecondLetter.csproj -c Release -o out --no-restore
-
-      # Ladda upp publish-output som artefakt.
-      - name: Upload publish artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-publish
-          path: out/
-
-      # Ladda upp byggd frontend så testjobb kan återanvända den utan rebuild.
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-wwwroot
-          path: Server/wwwroot/
-
-      # Docker-bygge som validering av containerisering (ingen push här).
-      # Deploy-workflown återanvänder inte detta bygge utan triggar bara Render,
-      # som gör sin egen source-based rebuild från repot vid deployment.
-      - name: Validate Docker build
-        run: docker build -t every-second-letter:ci .
-
-  # Job 2: Kör testsviter i matris (parallellt) och visar villkorlig körning.
-  tests:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [unit, api, ui]
-
-    steps:
-      # Hämta källkod för testjobbet.
-      - uses: actions/checkout@v4
-
-      # Hämta artefakt från build-jobbet (job dependency + artifacts i praktiken).
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-wwwroot
-          path: Server/wwwroot/
-
-      # .NET behövs för unit tests och för att starta API:t i api/ui-sviter.
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      # NuGet-cache även i testjobbet för snabbare restore.
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      # Restore igen i nytt jobb eftersom varje jobb kör i ren runner-miljö.
-      - name: Restore .NET dependencies
-        run: dotnet restore
-
-      # Node/npm behövs för API/UI-systemtester.
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: "npm"
-          cache-dependency-path: Testing/SystemTests/package-lock.json
-
-      # Installera testverktyg för API/UI (hoppas över på unit-matrisen via villkor).
-      - name: Install system test dependencies
-        if: ${{ matrix.suite != 'unit' }}
+      # Install npm dependencies for system tests
+      - name: Install test dependencies
         working-directory: Testing/SystemTests
         run: npm ci && npx playwright install
 
-      # Unit-testsvit med TRX-rapport.
+      # Run all tests (unit, API, and UI)
       - name: Run unit tests
-        if: ${{ matrix.suite == 'unit' }}
-        run: dotnet test --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+        run: dotnet test
 
-      # API-testsvit: starta server i bakgrunden, kör sedan Newman med JUnit-output.
-      - name: Run API tests
-        if: ${{ matrix.suite == 'api' }}
-        run: |
-          dotnet run --project Server/EverySecondLetter.csproj --urls http://localhost:5010 &
-          sleep 8
-          cd Testing/SystemTests
-          npm run test:api:ci
+      - name: Run api tests
+        working-directory: Testing/SystemTests
+        run: npm run test:api
 
-      # UI-testsvit: körs bara på push (exempel på villkorlig körning för dyrare tester).
-      - name: Run UI tests
-        if: ${{ matrix.suite == 'ui' && github.event_name == 'push' }}
-        run: |
-          dotnet run --project Server/EverySecondLetter.csproj --urls http://localhost:5010 &
-          sleep 8
-          cd Testing/SystemTests
-          npm run test:ui
-
-      # Ladda upp testresultat även om tester fallerar, så rapportjobb alltid kan läsa dem.
-      - name: Upload test artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.suite }}
-          path: |
-            TestResults/**
-            Testing/SystemTests/test-results/**
-            Testing/SystemTests/playwright-report/**
-          if-no-files-found: ignore
-
-  # Job 3: Rapporteringsjobb som alltid körs och summerar artefakter/resultat.
-  report:
-    needs: tests
-    if: always()
-    runs-on: ubuntu-latest
-
-    steps:
-      # Hämta alla testartefakter från matrisjobben.
-      - name: Download all test artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: test-results-*
-          path: artifacts/
-          merge-multiple: true
-
-      # Skapa en enkel pipeline-rapport i GitHub Step Summary.
-      - name: Publish pipeline summary
-        run: |
-          echo "## CI Rapport" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Build-jobb: klart" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Testmatris: unit/api/ui körda parallellt (UI endast på push)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Nedladdade artefakter:" >> "$GITHUB_STEP_SUMMARY"
-          find artifacts -type f | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+      - name: Run system tests
+        working-directory: Testing/SystemTests
+        run: npm run test:ui
