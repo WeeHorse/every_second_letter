@@ -2,9 +2,9 @@ name: .NET
 
 on:
   push:
-    branches: ["disabled_deploy"]
+    branches: ["publish"]
   pull_request:
-    branches: ["disabled_deploy"]
+    branches: ["publish"]
 
 jobs:
   # Job 1: Bygger backend + frontend och publicerar artefakter som andra jobb kan använda.
