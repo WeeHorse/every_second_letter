@@ -134,4 +134,3 @@ jobs:
             echo "One or more test suites failed."
             exit 1
           fi
-.
